@@ -24,15 +24,9 @@
   <br/>
   <button id="backBtn">📁 返回功能選單</button>
 
-  <form id="uploadForm" method="POST" enctype="multipart/form-data" style="display: none;">
-    <input type="hidden" name="patient_id" id="uploadPatientId" />
-    <input type="file" name="image" id="imageFile" />
-  </form>
-
   <script>
     const patientId = new URLSearchParams(window.location.search).get('patient');
     document.getElementById("patientName").textContent = patientId;
-    document.getElementById("uploadPatientId").value = patientId;
 
     const video = document.getElementById("camera");
     const canvas = document.getElementById("snapshot");
