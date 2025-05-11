@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>拍攝舌苔照片</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; text-align: center; padding-top: 2rem; }
+    video, canvas { width: 90%; max-width: 500px; margin-top: 1rem; border-radius: 10px; }
+    button { font-size: 1rem; padding: 0.5rem 1.2rem; margin: 0.5rem; }
+    #controls { margin-top: 1rem; }
+  </style>
+</head>
+<body>
+  <h2>病患 ID：<span id="patientName"></span></h2>
+  <video id="camera" autoplay playsinline></video>
+  <canvas id="snapshot" style="display:none;"></canvas>
+
+  <div id="controls">
+    <button id="takePhotoBtn">📸 拍照</button>
+    <button id="retakeBtn" style="display:none;">🔄 重新拍攝</button>
+    <button id="uploadBtn" style="display:none;">📤 上傳並辨識</button>
+  </div>
+  <br/>
+  <button id="backBtn">📁 返回功能選單</button>
+
+  <form id="uploadForm" method="POST" enctype="multipart/form-data" style="display: none;">
+    <input type="hidden" name="patient_id" id="uploadPatientId" />
+    <input type="file" name="image" id="imageFile" />
+  </form>
+
+  <script>
+    const patientId = new URLSearchParams(window.location.search).get('patient');
+    document.getElementById("patientName").textContent = patientId;
+    document.getElementById("uploadPatientId").value = patientId;
+
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("snapshot");
+    const ctx = canvas.getContext("2d");
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => video.srcObject = stream)
+      .catch(err => alert('❌ 鏡頭開啟失敗：' + err.message));
+
+    document.getElementById("takePhotoBtn").onclick = () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      canvas.style.display = "block";
+
+      document.getElementById("retakeBtn").style.display = "inline-block";
+      document.getElementById("uploadBtn").style.display = "inline-block";
+      document.getElementById("takePhotoBtn").style.display = "none";
+    };
+
+    document.getElementById("retakeBtn").onclick = () => {
+      canvas.style.display = "none";
+      document.getElementById("retakeBtn").style.display = "none";
+      document.getElementById("uploadBtn").style.display = "none";
+      document.getElementById("takePhotoBtn").style.display = "inline-block";
+    };
+
+    document.getElementById("uploadBtn").onclick = () => {
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append("patient_id", patientId);
+        formData.append("image", blob, `${patientId}_${Date.now()}.jpg`);
+
+        fetch("/upload", {
+          method: "POST",
+          body: formData
+        })
+        .then(res => res.text())
+        .then(msg => {
+          alert("✅ 照片已上傳：" + msg);
+          location.reload();
+        })
+        .catch(err => alert("❌ 上傳失敗：" + err.message));
+      }, "image/jpeg");
+    };
+
+    document.getElementById("backBtn").onclick = () => {
+      window.location.href = `/dashboard?patient=${patientId}`;
+    };
+  </script>
+</body>
+</html>

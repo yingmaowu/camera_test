@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>功能選單</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; text-align: center; padding-top: 5rem; }
+    h2 { margin-bottom: 2rem; }
+    button {
+      font-size: 1.2rem;
+      padding: 1rem 2rem;
+      margin: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>病患 ID：<span id="patientName"></span></h2>
+  <button id="goCapture">📸 拍攝舌苔照片</button>
+  <button id="goHistory">🖼 查看歷史照片</button>
+  <button id="goLogin">🔙 返回登入頁</button>
+
+  <script>
+    const patientId = new URLSearchParams(window.location.search).get("patient");
+    document.getElementById("patientName").textContent = patientId;
+
+    document.getElementById("goCapture").onclick = () => {
+      window.location.href = `/capture?patient=${patientId}`;
+    };
+    document.getElementById("goHistory").onclick = () => {
+      window.location.href = `/history?patient=${patientId}`;
+    };
+    document.getElementById("goLogin").onclick = () => {
+      window.location.href = "/";
+    };
+  </script>
+</body>
+</html>

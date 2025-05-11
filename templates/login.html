@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>病患登入</title>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; text-align: center; padding-top: 5rem; }
+    input, button {
+      font-size: 1.2rem;
+      padding: 0.6rem 1rem;
+      margin: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <h2>請輸入病患 ID</h2>
+  <form id="patientForm" method="POST" action="/validate_patient">
+    <input type="text" name="patient_id" id="patientId" placeholder="例如 amy123" required />
+    <br/>
+    <button type="submit" name="action" value="capture">📸 拍攝照片</button>
+    <button type="submit" name="action" value="history">🖼 查看歷史照片</button>
+  </form>
+</body>
+</html>
