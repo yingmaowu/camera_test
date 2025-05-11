@@ -15,11 +15,31 @@
 </head>
 <body>
   <h2>請輸入病患 ID</h2>
-  <form id="patientForm" method="POST" action="/validate_patient">
+  <form id="patientForm">
     <input type="text" name="patient_id" id="patientId" placeholder="例如 amy123" required />
     <br/>
-    <button type="submit" name="action" value="capture">📸 拍攝照片</button>
-    <button type="submit" name="action" value="history">🖼 查看歷史照片</button>
+    <button type="button" onclick="goToCapture()">📸 拍攝照片</button>
+    <button type="button" onclick="goToHistory()">🖼 查看歷史照片</button>
   </form>
+
+  <script>
+    function goToCapture() {
+      const patientId = document.getElementById("patientId").value.trim();
+      if (patientId) {
+        window.location.href = `/capture?patient=${patientId}`;
+      } else {
+        alert("請輸入病患 ID");
+      }
+    }
+
+    function goToHistory() {
+      const patientId = document.getElementById("patientId").value.trim();
+      if (patientId) {
+        window.location.href = `/history?patient=${patientId}`;
+      } else {
+        alert("請輸入病患 ID");
+      }
+    }
+  </script>
 </body>
 </html>
