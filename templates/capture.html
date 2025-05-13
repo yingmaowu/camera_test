@@ -1,125 +1,69 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>舌苔辨識相機</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <meta charset="UTF-8">
+    <title>拍攝照片</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <h2>舌苔辨識相機</h2>
-  <div id="videoWrapper">
-    <video id="camera" autoplay playsinline></video>
-    <canvas id="overlay"></canvas>
-  </div>
-  <div>
+    <h1>拍攝照片 - 病患 ID：{{ patient_id }}</h1>
+    <video id="video" autoplay playsinline></video>
+    <canvas id="canvas" style="display:none;"></canvas>
+    <div id="overlay">
+        <!-- 舌頭九宮格輔助框 -->
+    </div>
     <button id="captureBtn">拍照</button>
     <button id="retakeBtn" style="display:none;">重新拍攝</button>
     <button id="uploadBtn" style="display:none;">上傳並辨識</button>
-    <a href="{{ url_for('index') }}"><button>返回功能選單</button></a>
-  </div>
+    <form action="/" method="get">
+        <button type="submit">返回功能選單</button>
+    </form>
+    <script>
+        const video = document.getElementById('video');
+        const canvas = document.getElementById('canvas');
+        const captureBtn = document.getElementById('captureBtn');
+        const retakeBtn = document.getElementById('retakeBtn');
+        const uploadBtn = document.getElementById('uploadBtn');
+        let stream;
 
-  <script>
-    const video = document.getElementById("camera");
-    const canvas = document.getElementById("overlay");
-    const captureBtn = document.getElementById("captureBtn");
-    const retakeBtn = document.getElementById("retakeBtn");
-    const uploadBtn = document.getElementById("uploadBtn");
-    let snapshotBlob = null;
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(s => {
+                stream = s;
+                video.srcObject = stream;
+            });
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-      .then(stream => {
-        video.srcObject = stream;
-        video.onloadeddata = drawOverlay;
-      })
-      .catch(err => {
-        alert("❌ 鏡頭啟動失敗：" + err.message);
-      });
-
-    function drawOverlay() {
-      const ctx = canvas.getContext("2d");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height * 0.65;
-      const tongueWidth = canvas.width * 0.35;
-      const tongueHeight = canvas.height * 0.5;
-      const leftX = centerX - tongueWidth / 2;
-      const rightX = centerX + tongueWidth / 2;
-      const topY = centerY - tongueHeight / 2;
-      const bottomY = centerY + tongueHeight / 2;
-
-      ctx.beginPath();
-      ctx.moveTo(leftX, topY + 20);
-      ctx.bezierCurveTo(leftX, centerY, centerX - tongueWidth * 0.2, bottomY, centerX, bottomY);
-      ctx.bezierCurveTo(centerX + tongueWidth * 0.2, bottomY, rightX, centerY, rightX, topY + 20);
-      ctx.bezierCurveTo(rightX, topY - 15, leftX, topY - 15, leftX, topY + 20);
-      ctx.closePath();
-      ctx.strokeStyle = "#ff69b4";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      drawTongueGrid(ctx, leftX, topY + 20, rightX, bottomY);
-    }
-
-    function drawTongueGrid(ctx, leftX, topY, rightX, bottomY) {
-      const gridWidth = rightX - leftX;
-      const gridHeight = bottomY - topY;
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 1;
-      for (let i = 1; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(leftX + (gridWidth / 3) * i, topY);
-        ctx.lineTo(leftX + (gridWidth / 3) * i, bottomY);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(leftX, topY + (gridHeight / 3) * i);
-        ctx.lineTo(rightX, topY + (gridHeight / 3) * i);
-        ctx.stroke();
-      }
-    }
-
-    captureBtn.addEventListener("click", () => {
-      const snap = document.createElement("canvas");
-      snap.width = video.videoWidth;
-      snap.height = video.videoHeight;
-      const ctx = snap.getContext("2d");
-      ctx.drawImage(video, 0, 0);
-      ctx.drawImage(canvas, 0, 0);
-
-      snap.toBlob(blob => {
-        snapshotBlob = blob;
-        alert("📸 拍照完成！");
-        uploadBtn.style.display = "inline";
-        retakeBtn.style.display = "inline";
-        captureBtn.style.display = "none";
-      }, "image/jpeg");
-    });
-
-    retakeBtn.addEventListener("click", () => {
-      snapshotBlob = null;
-      uploadBtn.style.display = "none";
-      retakeBtn.style.display = "none";
-      captureBtn.style.display = "inline";
-    });
-
-    uploadBtn.addEventListener("click", () => {
-      if (!snapshotBlob) return alert("請先拍照！");
-      const formData = new FormData();
-      formData.append("image", snapshotBlob);
-      formData.append("patient_id", "{{ patient_id }}");
-
-      fetch("/upload", { method: "POST", body: formData })
-        .then(res => res.text())
-        .then(msg => {
-          alert("✅ 上傳成功！");
-          window.location.href = `/history?patient_id={{ patient_id }}`;
-        })
-        .catch(err => {
-          alert("❌ 上傳失敗：" + err.message);
+        captureBtn.addEventListener('click', () => {
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            canvas.getContext('2d').drawImage(video, 0, 0);
+            captureBtn.style.display = 'none';
+            retakeBtn.style.display = 'inline';
+            uploadBtn.style.display = 'inline';
         });
-    });
-  </script>
+
+        retakeBtn.addEventListener('click', () => {
+            captureBtn.style.display = 'inline';
+            retakeBtn.style.display = 'none';
+            uploadBtn.style.display = 'none';
+        });
+
+        uploadBtn.addEventListener('click', () => {
+            canvas.toBlob(blob => {
+                const formData = new FormData();
+                formData.append('image', blob, 'photo.jpg');
+                formData.append('patient_id', '{{ patient_id }}');
+                fetch('/upload', {
+                    method: 'POST',
+                    body: formData
+                }).then(response => {
+                    if (response.ok) {
+                        alert('上傳成功');
+                    } else {
+                        alert('上傳失敗');
+                    }
+                });
+            }, 'image/jpeg');
+        });
+    </script>
 </body>
 </html>
