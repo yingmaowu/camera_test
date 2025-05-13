@@ -3,6 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <title>歷史照片紀錄</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { font-family: sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 2rem; }
+    #photoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; max-width: 800px; margin: auto; }
+    img { width: 100%; border-radius: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.2); cursor: pointer; transition: 0.2s; }
+    img:hover { transform: scale(1.03); }
+    button { font-size: 1rem; padding: 0.5rem 1rem; margin: 0.5rem; }
+  </style>
 </head>
 <body>
   <h2>歷史照片紀錄</h2>
@@ -29,11 +37,16 @@
         urls.forEach(url => {
           const img = document.createElement("img");
           img.src = url;
-          img.style = "width:150px;margin:10px;cursor:pointer";
           img.onclick = () => {
             fetch(`/analyze_color?path=${encodeURIComponent(url)}`)
               .then(res => res.json())
-              .then(data => alert(`🧠 中醫推論：${data["中醫推論"]}\n🎨 舌苔主色：${data["舌苔主色"]}`));
+              .then(data => {
+                Swal.fire({
+                  title: "🧠 中醫推論",
+                  html: `舌苔主色：<strong>${data["舌苔主色"]}</strong><br><br>${data["中醫推論"]}`,
+                  icon: "info"
+                });
+              });
           };
           photoGrid.appendChild(img);
         });
