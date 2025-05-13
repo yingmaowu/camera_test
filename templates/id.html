@@ -5,25 +5,59 @@
   <title>輸入病患 ID</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f9f9f9; font-family: sans-serif; }
-    input, button { font-size: 1.2rem; padding: 0.5rem 1rem; margin-top: 1rem; }
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(135deg, #dfe9f3 0%, #ffffff 100%);
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .card {
+      background: #fff;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    input, button {
+      font-size: 1.1rem;
+      padding: 0.6rem 1.2rem;
+      margin-top: 1rem;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background-color: #4a90e2;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #357ABD;
+    }
   </style>
 </head>
 <body>
-  <h2>請輸入病患 ID</h2>
-  <input id="idInput" placeholder="病患 ID" />
-  <button id="nextBtn">開始</button>
+  <div class="card">
+    <h2>👤 輸入病患 ID</h2>
+    <input id="idInput" placeholder="請輸入病患 ID" />
+    <br />
+    <button id="nextBtn">開始辨識</button>
+  </div>
 
   <script>
     document.getElementById("nextBtn").addEventListener("click", () => {
       const id = document.getElementById("idInput").value.trim();
-      if (!id) return Swal.fire("請輸入病患 ID");
+      if (!id) return Swal.fire("⚠️ 請輸入病患 ID");
 
       fetch("/patients")
         .then(res => res.json())
         .then(existing => {
           if (!existing.includes(id)) {
-            Swal.fire("✅ 已替您新增該病患 ID").then(() => {
+            Swal.fire("📁 已替您建立病患資料夾").then(() => {
               window.location.href = `/index?patient=${id}`;
             });
           } else {
