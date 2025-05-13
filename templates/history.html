@@ -6,6 +6,8 @@
 </head>
 <body>
   <h2>歷史照片紀錄</h2>
+  <button onclick="window.location.href='/'">回首頁</button>
+  <button id="backIndex">回拍照頁</button>
   <div id="photoGrid"></div>
 
   <script>
@@ -13,10 +15,17 @@
     const urlParams = new URLSearchParams(window.location.search);
     const patientId = urlParams.get("patient") || "";
 
+    document.getElementById("backIndex").onclick = () => {
+      window.location.href = `/index?patient=${patientId}`;
+    };
+
     fetch(`/photos?patient=${patientId}`)
       .then(res => res.json())
       .then(urls => {
-        if (!urls.length) return photoGrid.innerHTML = "<p>尚無照片</p>";
+        if (!urls.length) {
+          photoGrid.innerHTML = "<p>尚無照片</p>";
+          return;
+        }
         urls.forEach(url => {
           const img = document.createElement("img");
           img.src = url;
