@@ -2,127 +2,33 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>歷史照片紀錄</title>
-  <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f0f0f0;
-      text-align: center;
-    }
-    h2 {
-      margin-top: 1rem;
-    }
-    #controls {
-      margin: 1rem;
-    }
-    #patientInput {
-      font-size: 1rem;
-      padding: 0.4rem;
-      width: 200px;
-    }
-    #loadBtn, #backBtn {
-      padding: 0.5rem 1rem;
-      font-size: 1rem;
-      margin-left: 0.5rem;
-    }
-    #photoGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-      padding: 1rem;
-    }
-    img {
-      width: 100%;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    img:hover {
-      transform: scale(1.05);
-    }
-  </style>
 </head>
 <body>
   <h2>歷史照片紀錄</h2>
-
-  <div id="controls">
-    <input id="patientInput" list="patientList" placeholder="請輸入病患 ID" />
-    <datalist id="patientList"></datalist>
-    <button id="loadBtn">載入照片</button>
-    <button id="backBtn">返回拍照頁</button>
-  </div>
-
   <div id="photoGrid"></div>
 
   <script>
-    const patientInput = document.getElementById("patientInput");
     const photoGrid = document.getElementById("photoGrid");
-    const loadBtn = document.getElementById("loadBtn");
-    const backBtn = document.getElementById("backBtn");
-    const datalist = document.getElementById("patientList");
-
-    // 🚀 自動取得病患 ID 選單
-    fetch("/patients")
-      .then(res => res.json())
-      .then(patientList => {
-        datalist.innerHTML = "";
-        patientList.forEach(id => {
-          const option = document.createElement("option");
-          option.value = id;
-          datalist.appendChild(option);
-        });
-      })
-      .catch(err => {
-        console.warn("❌ 無法載入病患列表", err);
-      });
-
-    // 點擊查詢按鈕：讀取該病患照片
-    loadBtn.addEventListener("click", () => {
-      const patientId = patientInput.value.trim();
-      if (!patientId) {
-        alert("請輸入病患 ID");
-        return;
-      }
-
-      photoGrid.innerHTML = "<p>載入中...</p>";
-
-      fetch(`/photos?patient=${patientId}`)
-        .then(res => res.json())
-        .then(urls => {
-          if (urls.length === 0) {
-            photoGrid.innerHTML = "<p>該病患目前沒有拍攝任何照片。</p>";
-            return;
-          }
-
-          photoGrid.innerHTML = "";
-          urls.forEach(url => {
-            const img = document.createElement("img");
-            img.src = url;
-            img.alt = "舌苔照片";
-            img.onclick = () => window.open(url, "_blank");
-            photoGrid.appendChild(img);
-          });
-        })
-        .catch(err => {
-          console.error("❌ 無法載入照片：", err);
-          photoGrid.innerHTML = "<p>❌ 無法載入照片，請稍後再試</p>";
-        });
-    });
-
-    // 返回首頁
-    backBtn.addEventListener("click", () => {
-      window.location.href = "/";
-    });
-
-    // 自動填入網址參數中的 patient ID（若有）
     const urlParams = new URLSearchParams(window.location.search);
-    const presetId = urlParams.get("patient");
-    if (presetId) {
-      patientInput.value = presetId;
-      loadBtn.click();
-    }
+    const patientId = urlParams.get("patient") || "";
+
+    fetch(`/photos?patient=${patientId}`)
+      .then(res => res.json())
+      .then(urls => {
+        if (!urls.length) return photoGrid.innerHTML = "<p>尚無照片</p>";
+        urls.forEach(url => {
+          const img = document.createElement("img");
+          img.src = url;
+          img.style = "width:150px;margin:10px;cursor:pointer";
+          img.onclick = () => {
+            fetch(`/analyze_color?path=${encodeURIComponent(url)}`)
+              .then(res => res.json())
+              .then(data => alert(`🧠 中醫推論：${data["中醫推論"]}\n🎨 舌苔主色：${data["舌苔主色"]}`));
+          };
+          photoGrid.appendChild(img);
+        });
+      });
   </script>
 </body>
 </html>
