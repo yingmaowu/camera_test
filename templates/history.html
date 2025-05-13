@@ -5,35 +5,87 @@
   <title>歷史照片紀錄</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { font-family: sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 2rem; }
-    #photoGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 15px;
-      max-width: 800px;
-      margin: auto;
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f0f0;
+      text-align: center;
+      margin: 0;
+      padding: 2rem;
     }
-    img {
-      width: 100%;
-      border-radius: 10px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.2);
-      cursor: pointer;
-      transition: 0.2s;
+
+    h2 {
+      margin-bottom: 1rem;
     }
-    img:hover {
-      transform: scale(1.03);
+
+    .button-row {
+      display: flex;
+      justify-content: center;
+      gap: 1rem;
+      flex-wrap: wrap;
     }
+
     button {
       font-size: 1rem;
-      padding: 0.5rem 1rem;
-      margin: 0.5rem;
+      padding: 0.5rem 1.2rem;
+      margin: 0.5rem 0;
+      border: none;
+      border-radius: 8px;
+      background-color: #4a90e2;
+      color: white;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    button:hover {
+      background-color: #357ABD;
+    }
+
+    #photoGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: 2rem auto;
+    }
+
+    .photo-card {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .photo-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+    }
+
+    .photo-card img {
+      width: 100%;
+      display: block;
+      object-fit: cover;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 1rem;
+      }
+
+      h2 {
+        font-size: 1.2rem;
+      }
     }
   </style>
 </head>
 <body>
-  <h2>歷史照片紀錄</h2>
-  <button onclick="window.location.href='/'">回病患 ID 輸入</button>
-  <button id="backIndex">回拍照頁</button>
+  <h2>📁 歷史照片紀錄</h2>
+
+  <div class="button-row">
+    <button onclick="window.location.href='/'">回病患 ID 輸入</button>
+    <button id="backIndex">回拍照頁</button>
+  </div>
+
   <div id="photoGrid"></div>
 
   <script>
@@ -52,21 +104,33 @@
           photoGrid.innerHTML = "<p>尚無照片</p>";
           return;
         }
+
         urls.forEach(url => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "photo-card";
+
           const img = document.createElement("img");
           img.src = url;
+          img.alt = "舌苔照片";
+
           img.onclick = () => {
             fetch(`/analyze_color?path=${encodeURIComponent(url)}`)
               .then(res => res.json())
               .then(data => {
                 Swal.fire({
                   title: "🧠 中醫推論",
-                  html: `舌苔主色：<strong>${data["舌苔主色"]}</strong><br><br>${data["中醫推論"]}`,
-                  icon: "info"
+                  html: `
+                    <strong>舌苔主色：</strong> ${data["舌苔主色"]}<br><br>
+                    <strong>推論內容：</strong><br>${data["中醫推論"]}
+                  `,
+                  icon: "info",
+                  confirmButtonText: "關閉"
                 });
               });
           };
-          photoGrid.appendChild(img);
+
+          wrapper.appendChild(img);
+          photoGrid.appendChild(wrapper);
         });
       });
   </script>
