@@ -1,69 +1,130 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-    <meta charset="UTF-8">
-    <title>拍攝照片</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <meta charset="UTF-8">
+  <title>拍攝照片</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    canvas#overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      z-index: 2;
+      pointer-events: none;
+    }
+  </style>
 </head>
 <body>
-    <h1>拍攝照片 - 病患 ID：{{ patient_id }}</h1>
+  <h1>拍攝照片 - 病患 ID：{{ patient_id }}</h1>
+  <div style="position:relative; width:90%; max-width:500px; margin:auto;">
     <video id="video" autoplay playsinline></video>
-    <canvas id="canvas" style="display:none;"></canvas>
-    <div id="overlay">
-        <!-- 舌頭九宮格輔助框 -->
-    </div>
-    <button id="captureBtn">拍照</button>
-    <button id="retakeBtn" style="display:none;">重新拍攝</button>
-    <button id="uploadBtn" style="display:none;">上傳並辨識</button>
-    <form action="/" method="get">
-        <button type="submit">返回功能選單</button>
-    </form>
-    <script>
-        const video = document.getElementById('video');
-        const canvas = document.getElementById('canvas');
-        const captureBtn = document.getElementById('captureBtn');
-        const retakeBtn = document.getElementById('retakeBtn');
-        const uploadBtn = document.getElementById('uploadBtn');
-        let stream;
+    <canvas id="overlay"></canvas>
+  </div>
+  <canvas id="canvas" style="display:none;"></canvas>
+  <div class="controls">
+    <button id="captureBtn">📸 拍照</button>
+    <button id="retakeBtn" style="display:none;">🔄 重新拍攝</button>
+    <button id="uploadBtn" style="display:none;">📤 上傳並辨識</button>
+  </div>
+  <form action="/" method="get">
+    <button type="submit">📁 返回功能選單</button>
+  </form>
 
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-            .then(s => {
-                stream = s;
-                video.srcObject = stream;
-            });
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const overlay = document.getElementById('overlay');
+    const ctx = canvas.getContext('2d');
+    const captureBtn = document.getElementById('captureBtn');
+    const retakeBtn = document.getElementById('retakeBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+    const patientId = "{{ patient_id }}";
 
-        captureBtn.addEventListener('click', () => {
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            canvas.getContext('2d').drawImage(video, 0, 0);
-            captureBtn.style.display = 'none';
-            retakeBtn.style.display = 'inline';
-            uploadBtn.style.display = 'inline';
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.addEventListener('loadedmetadata', () => {
+          overlay.width = video.videoWidth;
+          overlay.height = video.videoHeight;
+          drawGridOverlay();
         });
+      });
 
-        retakeBtn.addEventListener('click', () => {
-            captureBtn.style.display = 'inline';
-            retakeBtn.style.display = 'none';
-            uploadBtn.style.display = 'none';
-        });
+    function drawGridOverlay() {
+      const ctx = overlay.getContext("2d");
+      const w = overlay.width;
+      const h = overlay.height;
 
-        uploadBtn.addEventListener('click', () => {
-            canvas.toBlob(blob => {
-                const formData = new FormData();
-                formData.append('image', blob, 'photo.jpg');
-                formData.append('patient_id', '{{ patient_id }}');
-                fetch('/upload', {
-                    method: 'POST',
-                    body: formData
-                }).then(response => {
-                    if (response.ok) {
-                        alert('上傳成功');
-                    } else {
-                        alert('上傳失敗');
-                    }
-                });
-            }, 'image/jpeg');
+      ctx.clearRect(0, 0, w, h);
+      const tongueW = w * 0.35;
+      const tongueH = h * 0.5;
+      const cx = w / 2;
+      const cy = h * 0.65;
+      const left = cx - tongueW / 2;
+      const top = cy - tongueH / 2;
+      const right = cx + tongueW / 2;
+      const bottom = cy + tongueH / 2;
+
+      ctx.beginPath();
+      ctx.moveTo(left, top + 20);
+      ctx.bezierCurveTo(left, cy, cx - tongueW * 0.2, bottom, cx, bottom);
+      ctx.bezierCurveTo(cx + tongueW * 0.2, bottom, right, cy, right, top + 20);
+      ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
+      ctx.closePath();
+      ctx.strokeStyle = "#ff69b4";
+      ctx.lineWidth = 3;
+      ctx.stroke();
+
+      ctx.strokeStyle = "red";
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 3; i++) {
+        const x = left + (tongueW / 3) * i;
+        ctx.beginPath();
+        ctx.moveTo(x, top);
+        ctx.lineTo(x, bottom);
+        ctx.stroke();
+
+        const y = top + (tongueH / 3) * i;
+        ctx.beginPath();
+        ctx.moveTo(left, y);
+        ctx.lineTo(right, y);
+        ctx.stroke();
+      }
+    }
+
+    captureBtn.addEventListener('click', () => {
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      captureBtn.style.display = 'none';
+      retakeBtn.style.display = 'inline';
+      uploadBtn.style.display = 'inline';
+    });
+
+    retakeBtn.addEventListener('click', () => {
+      captureBtn.style.display = 'inline';
+      retakeBtn.style.display = 'none';
+      uploadBtn.style.display = 'none';
+    });
+
+    uploadBtn.addEventListener('click', () => {
+      canvas.toBlob(blob => {
+        const formData = new FormData();
+        formData.append('image', blob, 'photo.jpg');
+        formData.append('patient_id', patientId);
+        fetch('/upload', {
+          method: 'POST',
+          body: formData
+        }).then(response => {
+          if (response.ok) {
+            alert('上傳成功');
+            location.href = `/history?patient_id=${patientId}`;
+          } else {
+            alert('上傳失敗');
+          }
         });
-    </script>
+      }, 'image/jpeg');
+    });
+  </script>
 </body>
 </html>
