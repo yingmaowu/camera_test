@@ -4,23 +4,57 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>舌苔辨識相機</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { margin: 0; font-family: sans-serif; text-align: center; background: #f0f0f0; }
-    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; }
-    video, canvas { width: 100%; border-radius: 10px; margin-top: 1rem; }
-    canvas { position: absolute; top: 1rem; left: 0; pointer-events: none; z-index: 10; }
-    button { margin: 1rem 0.5rem; padding: 0.6rem 1rem; font-size: 1.2rem; }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      text-align: center;
+      background: linear-gradient(to right, #fceabb, #f8b500);
+    }
+    h2 { margin-top: 1rem; }
+    #videoWrapper {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: auto;
+    }
+    video, canvas {
+      width: 100%;
+      border-radius: 10px;
+      margin-top: 1rem;
+    }
+    canvas {
+      position: absolute;
+      top: 1rem;
+      left: 0;
+      pointer-events: none;
+      z-index: 10;
+    }
+    button {
+      margin: 1rem 0.5rem;
+      padding: 0.7rem 1.5rem;
+      font-size: 1.2rem;
+      border-radius: 8px;
+      border: none;
+      background-color: #4caf50;
+      color: white;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #388e3c;
+    }
   </style>
 </head>
 <body>
-  <h2>舌苔辨識相機</h2>
+  <h2>📷 舌苔辨識相機</h2>
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline></video>
     <canvas id="overlay"></canvas>
   </div>
   <div>
-    <button id="captureBtn">拍照</button>
-    <button id="historyBtn">查看歷史照片</button>
+    <button id="captureBtn">📸 拍照</button>
+    <button id="historyBtn">📁 查看歷史</button>
   </div>
 
   <script>
@@ -39,7 +73,7 @@
         video.onloadeddata = drawOverlay;
       })
       .catch(err => {
-        alert("❌ 鏡頭啟動失敗：" + err.message);
+        Swal.fire("❌ 鏡頭啟動失敗", err.message, "error");
       });
 
     function drawOverlay() {
@@ -97,18 +131,26 @@
       snap.toBlob(blob => {
         snapshotBlob = blob;
 
-        const proceed = confirm("📸 拍照完成，要使用這張照片嗎？\n✅ 確認 → 上傳並查看歷史\n🔁 取消 → 重新拍照");
-        if (proceed) {
-          const formData = new FormData();
-          formData.append("image", snapshotBlob);
-          formData.append("patient_id", patientId);
-          fetch("/upload", { method: "POST", body: formData })
-            .then(() => {
-              window.location.href = `/history?patient=${patientId}`;
-            });
-        } else {
-          snapshotBlob = null;
-        }
+        Swal.fire({
+          title: "📸 拍照完成",
+          text: "是否上傳並查看？",
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "✅ 確認上傳",
+          cancelButtonText: "🔄 重新拍照"
+        }).then(result => {
+          if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append("image", snapshotBlob);
+            formData.append("patient_id", patientId);
+            fetch("/upload", { method: "POST", body: formData })
+              .then(() => {
+                window.location.href = `/history?patient=${patientId}`;
+              });
+          } else {
+            snapshotBlob = null;
+          }
+        });
       }, "image/jpeg");
     });
 
