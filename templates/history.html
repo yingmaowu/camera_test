@@ -6,15 +6,33 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body { font-family: sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 2rem; }
-    #photoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px; max-width: 800px; margin: auto; }
-    img { width: 100%; border-radius: 10px; box-shadow: 0 0 5px rgba(0,0,0,0.2); cursor: pointer; transition: 0.2s; }
-    img:hover { transform: scale(1.03); }
-    button { font-size: 1rem; padding: 0.5rem 1rem; margin: 0.5rem; }
+    #photoGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 15px;
+      max-width: 800px;
+      margin: auto;
+    }
+    img {
+      width: 100%;
+      border-radius: 10px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      cursor: pointer;
+      transition: 0.2s;
+    }
+    img:hover {
+      transform: scale(1.03);
+    }
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 1rem;
+      margin: 0.5rem;
+    }
   </style>
 </head>
 <body>
   <h2>歷史照片紀錄</h2>
-  <button onclick="window.location.href='/'">回首頁</button>
+  <button onclick="window.location.href='/'">回病患 ID 輸入</button>
   <button id="backIndex">回拍照頁</button>
   <div id="photoGrid"></div>
 
