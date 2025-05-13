@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>病患總覽</title>
+  <style>
+    body { font-family: sans-serif; background: #f9f9f9; padding: 1rem; }
+    h1 { text-align: center; }
+    .patient-block { margin-bottom: 2rem; }
+    .photos { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 0.5rem; }
+    .photos img {
+      width: 120px;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .photos img:hover {
+      transform: scale(1.05);
+    }
+  </style>
+</head>
+<body>
+  <h1>🗂 病患照片總覽</h1>
+  {% for patient in patients %}
+    <div class="patient-block">
+      <h3>🧑 病患 ID：{{ patient.id }}（共 {{ patient.count }} 張）</h3>
+      <div class="photos">
+        {% for photo in patient.photos %}
+          <img src="{{ photo }}" alt="照片" onclick="window.open('{{ photo }}', '_blank')" />
+        {% endfor %}
+      </div>
+    </div>
+  {% endfor %}
+</body>
+</html>
