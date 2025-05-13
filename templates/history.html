@@ -1,63 +1,26 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>歷史照片紀錄</title>
-  <style>
-    body { margin: 0; font-family: sans-serif; background: #f0f0f0; text-align: center; }
-    h2 { margin-top: 1rem; }
-    #photoGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-      gap: 10px;
-      padding: 1rem;
-    }
-    img {
-      width: 100%;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    img:hover {
-      transform: scale(1.05);
-    }
-    button {
-      font-size: 1rem;
-      padding: 0.5rem 1rem;
-      margin: 1rem;
-    }
-  </style>
+  <meta charset="UTF-8">
+  <title>歷史照片</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <h2>病患 ID：<span id="patientId"></span> 的歷史照片</h2>
-  <div id="photoGrid"></div>
-  <button id="backBtn">📁 返回功能選單</button>
-
-  <script>
-    const patientId = new URLSearchParams(window.location.search).get("patient");
-    document.getElementById("patientId").textContent = patientId;
-
-    fetch(`/photos?patient=${patientId}`)
-      .then(res => res.json())
-      .then(urls => {
-        const photoGrid = document.getElementById("photoGrid");
-        if (urls.length === 0) {
-          photoGrid.innerHTML = "<p>尚未有照片紀錄。</p>";
-        } else {
-          urls.forEach(url => {
-            const img = document.createElement("img");
-            img.src = url;
-            img.alt = "舌苔照片";
-            img.onclick = () => window.open(url, '_blank');
-            photoGrid.appendChild(img);
-          });
-        }
-      });
-
-    document.getElementById("backBtn").onclick = () => {
-      window.location.href = `/dashboard?patient=${patientId}`;
-    };
-  </script>
+  <h1>歷史照片 - 病患 ID：{{ patient_id }}</h1>
+  <div class="photo-grid">
+    {% for photo in photos %}
+    <div class="photo-item">
+      <img src="{{ photo }}" alt="photo">
+      <form method="post" action="/delete" onsubmit="return confirm('確定刪除這張照片？');">
+        <input type="hidden" name="patient_id" value="{{ patient_id }}">
+        <input type="hidden" name="filename" value="{{ photo.split('/')[-1] }}">
+        <button type="submit">🗑️ 刪除</button>
+      </form>
+    </div>
+    {% endfor %}
+  </div>
+  <form action="/" method="get">
+    <button type="submit">📁 返回功能選單</button>
+  </form>
 </body>
 </html>
