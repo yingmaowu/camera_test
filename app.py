@@ -1,22 +1,26 @@
-from flask import Flask, render_template, request, jsonify, send_from_directory
+from flask import Flask, render_template, request, jsonify, send_from_directory, redirect, url_for
 import os
 import datetime
 
 app = Flask(__name__)
 
+# 初始頁導向病患 ID 輸入頁
 @app.route('/')
 def home():
     return redirect(url_for('patient'))
 
+# 病患 ID 輸入頁
 @app.route('/patient')
 def patient():
     return render_template('patient.html')
 
+# 拍照頁（病患 ID 為參數）
 @app.route('/camera')
 def camera():
     patient_id = request.args.get('patient_id')
     return render_template('index.html', patient_id=patient_id)
 
+# 歷史頁（病患 ID 為參數）
 @app.route('/history')
 def history():
     patient_id = request.args.get('patient_id')
@@ -24,14 +28,6 @@ def history():
 
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-@app.route("/")
-def home():
-    return render_template("index.html")
-
-@app.route("/history")
-def history():
-    return render_template("history.html")
 
 @app.route("/upload", methods=["POST"])
 def upload_image():
