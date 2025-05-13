@@ -3,24 +3,32 @@
 <head>
   <meta charset="UTF-8">
   <title>輸入病患 ID</title>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f9f9f9; font-family: sans-serif; }
+    input, button { font-size: 1.2rem; padding: 0.5rem 1rem; margin-top: 1rem; }
+  </style>
 </head>
-<body style="text-align:center;margin-top:5rem;">
+<body>
   <h2>請輸入病患 ID</h2>
-  <input id="idInput" placeholder="病患 ID" style="padding:0.5rem;font-size:1rem;">
-  <button id="nextBtn" style="padding:0.5rem 1rem;font-size:1rem;">開始</button>
+  <input id="idInput" placeholder="病患 ID" />
+  <button id="nextBtn">開始</button>
 
   <script>
     document.getElementById("nextBtn").addEventListener("click", () => {
       const id = document.getElementById("idInput").value.trim();
-      if (!id) return alert("請輸入病患 ID");
+      if (!id) return Swal.fire("請輸入病患 ID");
 
       fetch("/patients")
         .then(res => res.json())
         .then(existing => {
           if (!existing.includes(id)) {
-            alert("✅ 已替您新增該病患 ID");
+            Swal.fire("✅ 已替您新增該病患 ID").then(() => {
+              window.location.href = `/index?patient=${id}`;
+            });
+          } else {
+            window.location.href = `/index?patient=${id}`;
           }
-          window.location.href = `/index?patient=${id}`;
         });
     });
   </script>
