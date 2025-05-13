@@ -1,45 +1,16 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>病患登入</title>
-  <style>
-    body { font-family: sans-serif; background: #f0f0f0; text-align: center; padding-top: 5rem; }
-    input, button {
-      font-size: 1.2rem;
-      padding: 0.6rem 1rem;
-      margin: 1rem;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>病患登入</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-  <h2>請輸入病患 ID</h2>
-  <form id="patientForm">
-    <input type="text" name="patient_id" id="patientId" placeholder="例如 amy123" required />
-    <br/>
-    <button type="button" onclick="goToCapture()">📸 拍攝照片</button>
-    <button type="button" onclick="goToHistory()">🖼 查看歷史照片</button>
-  </form>
-
-  <script>
-    function goToCapture() {
-      const patientId = document.getElementById("patientId").value.trim();
-      if (patientId) {
-        window.location.href = `/capture?patient=${patientId}`;
-      } else {
-        alert("請輸入病患 ID");
-      }
-    }
-
-    function goToHistory() {
-      const patientId = document.getElementById("patientId").value.trim();
-      if (patientId) {
-        window.location.href = `/history?patient=${patientId}`;
-      } else {
-        alert("請輸入病患 ID");
-      }
-    }
-  </script>
+    <h1>請輸入病患 ID</h1>
+    <form id="patientForm">
+        <input type="text" id="patientId" placeholder="病患 ID" required>
+        <button type="submit" formaction="/capture" formmethod="get">拍攝照片</button>
+        <button type="submit" formaction="/history" formmethod="get">查看歷史照片</button>
+    </form>
 </body>
 </html>
