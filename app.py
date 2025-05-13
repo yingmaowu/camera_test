@@ -79,6 +79,26 @@ def list_patients():
         return jsonify(sorted(folders))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+@app.route("/analyze_color")
+def analyze_existing_image():
+    path = request.args.get("path", "")
+    if not path:
+        return jsonify({"error": "Missing path"}), 400
+
+    local_path = path.lstrip("/")
+    if not os.path.exists(local_path):
+        return jsonify({"error": "Image not found"}), 404
+
+    main_color, comment, rgb = analyze_image_color(local_path)
+    return jsonify({
+        "舌苔主色": main_color,
+        "中醫推論": comment,
+        "主色RGB": rgb
+    })
+
+@app.route("/id")
+def id_input():
+    return render_template("id.html")
 
 # 啟動應用程式（Render 用）
 if __name__ == "__main__":
