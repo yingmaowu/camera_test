@@ -1,0 +1,32 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>輸入病患 ID</title>
+</head>
+<body>
+    <h2>請輸入病患 ID</h2>
+    <form id="patientForm">
+        <input type="text" id="patient_id" name="patient_id" required>
+        <br><br>
+        <button type="button" onclick="goToCamera()">拍照</button>
+        <button type="button" onclick="goToHistory()">查看歷史</button>
+    </form>
+
+    <script>
+        function goToCamera() {
+            const id = document.getElementById("patient_id").value;
+            if (id) {
+                window.location.href = `/camera?patient_id=${encodeURIComponent(id)}`;
+            }
+        }
+        function goToHistory() {
+            const id = document.getElementById("patient_id").value;
+            if (id) {
+                window.location.href = `/history?patient_id=${encodeURIComponent(id)}`;
+            }
+        }
+    </script>
+</body>
+</html>
