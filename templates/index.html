@@ -1,46 +1,31 @@
+<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>舌苔辨識相機</title>
-  <style>
-    body { margin: 0; font-family: sans-serif; text-align: center; background: #f0f0f0; }
-    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; }
-    video, canvas { width: 100%; border-radius: 10px; margin-top: 1rem; }
-    canvas { position: absolute; top: 1rem; left: 0; pointer-events: none; z-index: 10; }
-    button, input { margin: 1rem 0.5rem; padding: 0.6rem 1rem; font-size: 1.2rem; }
-    #result { background: #fff; margin: 1rem auto; max-width: 500px; padding: 1rem; border-radius: 10px; box-shadow: 0 0 10px rgba(0,0,0,0.1); }
-  </style>
 </head>
 <body>
   <h2>舌苔辨識相機</h2>
-  <div id="videoWrapper">
-    <video id="camera" autoplay playsinline></video>
-    <canvas id="overlay"></canvas>
-  </div>
+  <video id="camera" autoplay playsinline></video>
+  <canvas id="overlay"></canvas>
+
   <div>
     <button id="captureBtn">拍照</button>
-    <input id="patientId" placeholder="請輸入病患 ID" />
-    <button id="uploadBtn">上傳圖片</button>
     <button id="historyBtn">查看歷史照片</button>
   </div>
-
-  <!-- 顯示分析結果 -->
-  <div id="result"></div>
 
   <script>
     const video = document.getElementById("camera");
     const canvas = document.getElementById("overlay");
     const captureBtn = document.getElementById("captureBtn");
-    const uploadBtn = document.getElementById("uploadBtn");
     const historyBtn = document.getElementById("historyBtn");
-    const patientInput = document.getElementById("patientId");
-    const result = document.getElementById("result");
 
     let snapshotBlob = null;
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get("patient") || "";
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } })
+    navigator.mediaDevices.getUserMedia({ video: true })
       .then(stream => {
         video.srcObject = stream;
         video.onloadeddata = drawOverlay;
@@ -50,48 +35,10 @@
       });
 
     function drawOverlay() {
-      const ctx = canvas.getContext("2d");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      const centerX = canvas.width / 2;
-      const centerY = canvas.height * 0.65;
-      const tongueWidth = canvas.width * 0.35;
-      const tongueHeight = canvas.height * 0.5;
-      const leftX = centerX - tongueWidth / 2;
-      const rightX = centerX + tongueWidth / 2;
-      const topY = centerY - tongueHeight / 2;
-      const bottomY = centerY + tongueHeight / 2;
-
-      ctx.beginPath();
-      ctx.moveTo(leftX, topY + 20);
-      ctx.bezierCurveTo(leftX, centerY, centerX - tongueWidth * 0.2, bottomY, centerX, bottomY);
-      ctx.bezierCurveTo(centerX + tongueWidth * 0.2, bottomY, rightX, centerY, rightX, topY + 20);
-      ctx.bezierCurveTo(rightX, topY - 15, leftX, topY - 15, leftX, topY + 20);
-      ctx.closePath();
-      ctx.strokeStyle = "#ff69b4";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      drawTongueGrid(ctx, leftX, topY + 20, rightX, bottomY);
-    }
-
-    function drawTongueGrid(ctx, leftX, topY, rightX, bottomY) {
-      const gridWidth = rightX - leftX;
-      const gridHeight = bottomY - topY;
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 1;
-      for (let i = 1; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(leftX + (gridWidth / 3) * i, topY);
-        ctx.lineTo(leftX + (gridWidth / 3) * i, bottomY);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.moveTo(leftX, topY + (gridHeight / 3) * i);
-        ctx.lineTo(rightX, topY + (gridHeight / 3) * i);
-        ctx.stroke();
-      }
     }
 
     captureBtn.addEventListener("click", () => {
@@ -100,47 +47,33 @@
       snap.height = video.videoHeight;
       const ctx = snap.getContext("2d");
       ctx.drawImage(video, 0, 0);
-      ctx.drawImage(canvas, 0, 0);
-      snap.toBlob(blob => {
-        snapshotBlob = blob;
-        alert("📸 拍照完成，請輸入病患 ID 並上傳！");
-      }, "image/jpeg");
-    });
+      snapshotBlob = snap.toDataURL("image/jpeg");
 
-    uploadBtn.addEventListener("click", () => {
-      const patientId = patientInput.value.trim();
-      if (!snapshotBlob) return alert("請先拍照！");
-      if (!patientId) return alert("請輸入病患 ID");
+      const confirm = window.confirm("📸 拍照完成，要使用這張照片嗎？\n✅ 確認 → 上傳並查看歷史\n🔁 取消 → 重新拍照");
 
-      const formData = new FormData();
-      formData.append("image", snapshotBlob);
-      formData.append("patient_id", patientId);
-
-      fetch("/upload", { method: "POST", body: formData })
-        .then(res => res.json())
-    .then(data => {
-  const rgb = data["主色RGB"];
-  result.innerHTML = `
-    <p>✅ 上傳成功：<strong>${data.filename}</strong></p>
-    <p>🔍 舌苔主色：<strong>${data["舌苔主色"]}</strong></p>
-    <p>🧠 中醫推論：${data["中醫推論"]}</p>
-    <p>🎨 主色預覽：
-      <span style="display:inline-block;width:30px;height:30px;border-radius:5px;border:1px solid #333;background-color:rgb(${rgb[0]},${rgb[1]},${rgb[2]});"></span>
-      <span style="margin-left:10px;font-size:0.9rem;color:#555;">RGB(${rgb[0]}, ${rgb[1]}, ${rgb[2]})</span>
-    </p>
-  `;
-})
-
-        .catch(err => {
-          alert("❌ 上傳失敗：" + err.message);
-        });
+      if (confirm) {
+        const formData = new FormData();
+        formData.append("image", dataURLtoBlob(snapshotBlob));
+        formData.append("patient_id", patientId);
+        fetch("/upload", { method: "POST", body: formData })
+          .then(() => {
+            window.location.href = `/history?patient=${patientId}`;
+          });
+      } else {
+        snapshotBlob = null;
+      }
     });
 
     historyBtn.addEventListener("click", () => {
-      const patientId = patientInput.value.trim();
-      if (!patientId) return alert("請先輸入病患 ID");
       window.location.href = `/history?patient=${patientId}`;
     });
+
+    function dataURLtoBlob(dataurl) {
+      const arr = dataurl.split(','), mime = arr[0].match(/:(.*?);/)[1],
+            bstr = atob(arr[1]), n = bstr.length, u8arr = new Uint8Array(n);
+      while(n--) u8arr[n] = bstr.charCodeAt(n);
+      return new Blob([u8arr], {type:mime});
+    }
   </script>
 </body>
 </html>
