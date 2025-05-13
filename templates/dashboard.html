@@ -1,0 +1,25 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>Dashboard</title>
+</head>
+<body>
+    <h2>病患 ID：{{ patient }}</h2>
+    <button onclick="goToCamera()">拍攝舌苔照片</button>
+    <button onclick="goToHistory()">查詢歷史照片</button>
+
+    <script>
+        const patientId = "{{ patient }}";
+
+        function goToCamera() {
+            window.location.href = "/camera?patient_id=" + encodeURIComponent(patientId);
+        }
+
+        function goToHistory() {
+            window.location.href = "/history?patient_id=" + encodeURIComponent(patientId);
+        }
+    </script>
+</body>
+</html>

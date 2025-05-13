@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>歷史照片</title>
+</head>
+<body>
+  <h2>病患 ID：{{ patient_id }}</h2>
+  <div id="photoContainer"></div>
+  <br>
+  <button id="dashboardBtn">📁 返回功能選單</button>
+
+  <script>
+    const container = document.getElementById("photoContainer");
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get("patient_id");
+
+    fetch(`/photos?patient=${encodeURIComponent(patientId)}`)
+      .then(res => res.json())
+      .then(images => {
+        if (images.length === 0) {
+          container.innerHTML = "<p>尚無上傳照片。</p>";
+        } else {
+          images.forEach(src => {
+            const img = document.createElement("img");
+            img.src = src;
+            img.style.width = "200px";
+            img.style.margin = "10px";
+            container.appendChild(img);
+          });
+        }
+      });
+
+    document.getElementById("dashboardBtn").addEventListener("click", () => {
+      window.location.href = `/dashboard?patient=${encodeURIComponent(patientId)}`;
+    });
+  </script>
+</body>
+</html>
