@@ -1,0 +1,41 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <title>病患登入</title>
+</head>
+<body>
+    <h2>請輸入病患 ID</h2>
+    <form id="patientForm">
+        <input type="text" id="patient_id" name="patient_id" required>
+        <br><br>
+        <button type="button" onclick="submitPatient()">確認</button>
+    </form>
+
+    <script>
+        function submitPatient() {
+            const id = document.getElementById("patient_id").value.trim();
+            if (!id) {
+                alert("請輸入病患 ID");
+                return;
+            }
+
+            fetch("/validate_patient", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded"
+                },
+                body: "patient_id=" + encodeURIComponent(id)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.created) {
+                    alert("已為您新增病患 ID");
+                }
+                window.location.href = "/dashboard?patient=" + encodeURIComponent(data.patient_id);
+            });
+        }
+    </script>
+</body>
+</html>
