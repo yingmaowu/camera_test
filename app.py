@@ -8,12 +8,12 @@ UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 @app.route("/")
+def root():
+    return render_template("id.html")
+
+@app.route("/index")
 def home():
     return render_template("index.html")
-
-@app.route("/id")
-def id_input():
-    return render_template("id.html")
 
 @app.route("/history")
 def history():
@@ -27,12 +27,15 @@ def upload_image():
     patient_id = request.form.get('patient_id', '').strip()
     if not patient_id:
         return "Missing patient ID", 400
+
     patient_folder = os.path.join(UPLOAD_FOLDER, patient_id)
     os.makedirs(patient_folder, exist_ok=True)
+
     timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
     filename = f"{patient_id}_{timestamp}.jpg"
     filepath = os.path.join(patient_folder, filename)
     image.save(filepath)
+
     return jsonify({"filename": filename})
 
 @app.route("/photos", methods=["GET"])
@@ -55,6 +58,7 @@ def analyze_existing_image():
     local_path = path.lstrip("/")
     if not os.path.exists(local_path):
         return jsonify({"error": "Image not found"}), 404
+
     main_color, comment, rgb = analyze_image_color(local_path)
     return jsonify({
         "舌苔主色": main_color,
