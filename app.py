@@ -1,13 +1,31 @@
-from dotenv import load_dotenv
-load_dotenv()
 from flask import Flask, render_template, request, jsonify, send_from_directory
 import os
 import datetime
+from dotenv import load_dotenv
+from pymongo import MongoClient
+import cloudinary
+import cloudinary.uploader
+import tempfile
 from color_analysis import analyze_image_color
+
+# 載入本地 .env 或使用 Render 的環境變數
+load_dotenv()
 
 app = Flask(__name__)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+# MongoDB Atlas 連線
+mongo_client = MongoClient(os.environ.get("MONGO_URI"))
+mongo_db = mongo_client["tongueDB"]
+records_collection = mongo_db["records"]
+
+# Cloudinary 設定
+cloudinary.config(
+    cloud_name=os.environ.get("CLOUD_NAME"),
+    api_key=os.environ.get("CLOUD_API_KEY"),
+    api_secret=os.environ.get("CLOUD_API_SECRET")
+)
 
 @app.route("/")
 def root():
@@ -30,59 +48,49 @@ def upload_image():
     if not patient_id:
         return "Missing patient ID", 400
 
-    patient_folder = os.path.join(UPLOAD_FOLDER, patient_id)
-    os.makedirs(patient_folder, exist_ok=True)
+    # 上傳圖片到 Cloudinary
+    result = cloudinary.uploader.upload(image, folder=f"tongue/{patient_id}/")
+    image_url = result["secure_url"]
 
-    timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
-    filename = f"{patient_id}_{timestamp}.jpg"
-    filepath = os.path.join(patient_folder, filename)
-    image.save(filepath)
+    # 使用暫存檔分析顏色
+    with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
+        image.save(tmp.name)
+        main_color, comment, rgb = analyze_image_color(tmp.name)
+        os.remove(tmp.name)
 
-    return jsonify({"filename": filename})
+    # 儲存紀錄到 MongoDB
+    record = {
+        "patient_id": patient_id,
+        "image_url": image_url,
+        "main_color": main_color,
+        "comment": comment,
+        "rgb": rgb,
+        "timestamp": datetime.datetime.utcnow()
+    }
+    records_collection.insert_one(record)
 
-@app.route("/photos", methods=["GET"])
-def list_photos():
-    patient_id = request.args.get("patient", "").strip()
-    if not patient_id:
-        return jsonify([])
-    folder = os.path.join(UPLOAD_FOLDER, patient_id)
-    if not os.path.exists(folder):
-        return jsonify([])
-    files = sorted(os.listdir(folder), reverse=True)
-    urls = [f"/uploads/{patient_id}/{fname}" for fname in files]
-    return jsonify(urls)
-
-@app.route("/analyze_color")
-def analyze_existing_image():
-    path = request.args.get("path", "")
-    if not path:
-        return jsonify({"error": "Missing path"}), 400
-    local_path = path.lstrip("/")
-    if not os.path.exists(local_path):
-        return jsonify({"error": "Image not found"}), 404
-
-    main_color, comment, rgb = analyze_image_color(local_path)
     return jsonify({
+        "image_url": image_url,
         "舌苔主色": main_color,
         "中醫推論": comment,
         "主色RGB": rgb
     })
 
-@app.route("/uploads/<patient>/<filename>")
-def uploaded_file(patient, filename):
-    folder = os.path.join(UPLOAD_FOLDER, patient)
-    return send_from_directory(folder, filename)
+@app.route("/history_data", methods=["GET"])
+def get_history_data():
+    patient_id = request.args.get("patient", "").strip()
+    if not patient_id:
+        return jsonify([])
+
+    records = list(records_collection.find({"patient_id": patient_id}).sort("timestamp", -1))
+    for r in records:
+        r["_id"] = str(r["_id"])
+    return jsonify(records)
 
 @app.route("/patients", methods=["GET"])
 def list_patients():
-    try:
-        folders = [
-            name for name in os.listdir(UPLOAD_FOLDER)
-            if os.path.isdir(os.path.join(UPLOAD_FOLDER, name))
-        ]
-        return jsonify(sorted(folders))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    patients = records_collection.distinct("patient_id")
+    return jsonify(sorted(patients))
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
