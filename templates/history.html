@@ -12,19 +12,21 @@
       margin: 0;
       padding: 2rem;
     }
+
     h2 {
       margin-bottom: 1rem;
     }
+
     .button-row {
       display: flex;
       justify-content: center;
       gap: 1rem;
       flex-wrap: wrap;
     }
+
     button {
       font-size: 1rem;
       padding: 0.5rem 1.2rem;
-      margin: 0.5rem 0;
       border: none;
       border-radius: 8px;
       background-color: #4a90e2;
@@ -32,9 +34,11 @@
       cursor: pointer;
       transition: background-color 0.2s;
     }
+
     button:hover {
       background-color: #357ABD;
     }
+
     #photoGrid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -42,31 +46,36 @@
       max-width: 1000px;
       margin: 2rem auto;
     }
+
     .photo-card {
       background: #fff;
       border-radius: 10px;
       overflow: hidden;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
     }
+
     .photo-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
+
     .photo-card img {
       width: 100%;
       display: block;
-      object-fit: cover;
     }
+
     .timestamp {
-      font-size: 0.8rem;
-      color: #555;
-      padding: 0.5rem;
+      font-size: 0.9rem;
+      color: #666;
+      padding: 0.4rem;
     }
   </style>
 </head>
 <body>
   <h2>📁 歷史照片紀錄</h2>
+
   <div class="button-row">
     <button onclick="window.location.href='/'">回病患 ID 輸入</button>
     <button id="backIndex">回拍照頁</button>
@@ -78,6 +87,7 @@
     const photoGrid = document.getElementById("photoGrid");
     const urlParams = new URLSearchParams(window.location.search);
     const patientId = urlParams.get("patient") || "";
+
     document.getElementById("backIndex").onclick = () => {
       window.location.href = `/index?patient=${patientId}`;
     };
@@ -89,32 +99,45 @@
           photoGrid.innerHTML = "<p>尚無照片</p>";
           return;
         }
+
         records.forEach(record => {
-          const wrapper = document.createElement("div");
-          wrapper.className = "photo-card";
+          const card = document.createElement("div");
+          card.className = "photo-card";
 
           const img = document.createElement("img");
           img.src = record.image_url;
           img.alt = "舌苔照片";
 
-          const timestamp = document.createElement("div");
-          timestamp.className = "timestamp";
-          const t = new Date(record.timestamp);
-          timestamp.textContent = `${t.toLocaleDateString()} ${t.toLocaleTimeString()}`;
+          const time = new Date(record.timestamp).toLocaleString("zh-TW", {
+            year: "numeric", month: "2-digit", day: "2-digit",
+            hour: "2-digit", minute: "2-digit", second: "2-digit",
+            hour12: false
+          });
+
+          const timeEl = document.createElement("div");
+          timeEl.className = "timestamp";
+          timeEl.textContent = `🕒 ${time}`;
 
           img.onclick = () => {
             Swal.fire({
               title: "🧠 中醫推論",
-              html: `<strong>舌苔主色：</strong> ${record.main_color}<br><br><strong>推論內容：</strong><br>${record.comment}`,
+              html: `
+                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
+                <strong>推論內容：</strong><br>${record.comment}
+              `,
               icon: "info",
               confirmButtonText: "關閉"
             });
           };
 
-          wrapper.appendChild(img);
-          wrapper.appendChild(timestamp);
-          photoGrid.appendChild(wrapper);
+          card.appendChild(img);
+          card.appendChild(timeEl);
+          photoGrid.appendChild(card);
         });
+      })
+      .catch(err => {
+        photoGrid.innerHTML = "<p>❌ 無法載入照片</p>";
+        console.error("fetch history error", err);
       });
   </script>
 </body>
