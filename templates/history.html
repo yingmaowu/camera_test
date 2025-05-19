@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>歷史照片紀錄</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
@@ -12,18 +13,16 @@
       margin: 0;
       padding: 2rem;
     }
-
     h2 {
       margin-bottom: 1rem;
     }
-
     .button-row {
       display: flex;
       justify-content: center;
       gap: 1rem;
       flex-wrap: wrap;
+      margin-bottom: 1.5rem;
     }
-
     button {
       font-size: 1rem;
       padding: 0.5rem 1.2rem;
@@ -34,19 +33,16 @@
       cursor: pointer;
       transition: background-color 0.2s;
     }
-
     button:hover {
       background-color: #357ABD;
     }
-
     #photoGrid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
       gap: 20px;
       max-width: 1000px;
-      margin: 2rem auto;
+      margin: 0 auto;
     }
-
     .photo-card {
       background: #fff;
       border-radius: 10px;
@@ -55,16 +51,23 @@
       transition: transform 0.3s ease, box-shadow 0.3s ease;
       cursor: pointer;
     }
-
     .photo-card:hover {
       transform: translateY(-5px);
       box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
-
     .photo-card img {
       width: 100%;
       display: block;
       object-fit: cover;
+    }
+    @media (max-width: 480px) {
+      h2 {
+        font-size: 1.3rem;
+      }
+      button {
+        font-size: 0.9rem;
+        padding: 0.5rem 1rem;
+      }
     }
   </style>
 </head>
@@ -91,7 +94,7 @@
       .then(res => res.json())
       .then(records => {
         if (!records.length) {
-          photoGrid.innerHTML = "<p>尚無照片</p>";
+          photoGrid.innerHTML = "<p>尚無照片資料</p>";
           return;
         }
 
@@ -108,7 +111,8 @@
               title: "🧠 中醫推論",
               html: `
                 <strong>舌苔主色：</strong> ${r.main_color}<br><br>
-                <strong>推論內容：</strong><br>${r.comment}
+                <strong>推論內容：</strong><br>${r.comment}<br><br>
+                <strong>RGB：</strong> ${r.rgb.join(', ')}
               `,
               icon: "info",
               confirmButtonText: "關閉"
