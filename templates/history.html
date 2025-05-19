@@ -1,41 +1,35 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>歷史照片紀錄</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
-      font-family: "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 1rem;
-      background: #f0f2f5;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f0f0;
       text-align: center;
-    }
-
-    h2 {
-      color: #333;
-      margin-bottom: 1rem;
+      margin: 0;
+      padding: 2rem;
     }
 
     .button-row {
       display: flex;
       justify-content: center;
-      flex-wrap: wrap;
       gap: 1rem;
-      margin-bottom: 2rem;
+      flex-wrap: wrap;
     }
 
     button {
-      padding: 0.6rem 1.2rem;
       font-size: 1rem;
+      padding: 0.5rem 1.2rem;
+      margin: 0.5rem 0;
+      border: none;
+      border-radius: 8px;
       background-color: #4a90e2;
       color: white;
-      border: none;
-      border-radius: 6px;
       cursor: pointer;
-      transition: background-color 0.2s ease;
+      transition: background-color 0.2s;
     }
 
     button:hover {
@@ -45,92 +39,80 @@
     #photoGrid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 1rem;
+      gap: 20px;
       max-width: 1000px;
-      margin: auto;
+      margin: 2rem auto;
     }
 
     .photo-card {
       background: #fff;
-      border-radius: 8px;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      border-radius: 10px;
       overflow: hidden;
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
     .photo-card:hover {
-      transform: scale(1.03);
-      box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+      transform: translateY(-5px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
     }
 
     .photo-card img {
       width: 100%;
-      height: 140px;
+      display: block;
       object-fit: cover;
-    }
-
-    @media (max-width: 600px) {
-      .photo-card img {
-        height: auto;
-      }
     }
   </style>
 </head>
 <body>
   <h2>📁 歷史照片紀錄</h2>
-
   <div class="button-row">
-    <button onclick="location.href='/'">回病患 ID 輸入</button>
-    <button onclick="location.href='/index?patient=' + encodeURIComponent(patientId)">回拍照頁</button>
+    <button onclick="window.location.href='/'">回病患 ID 輸入</button>
+    <button id="backIndex">回拍照頁</button>
   </div>
 
-  <div id="photoGrid">載入中...</div>
+  <div id="photoGrid"></div>
 
   <script>
     const photoGrid = document.getElementById("photoGrid");
-    const patientId = new URLSearchParams(window.location.search).get("patient");
+    const patientId = new URLSearchParams(window.location.search).get("patient") || "";
 
-    if (!patientId) {
-      photoGrid.innerHTML = "<p>⚠️ 網址未包含 patient ID 參數</p>";
-    } else {
-      fetch(`/history_data?patient=${patientId}`)
-        .then(res => res.json())
-        .then(data => {
-          if (!data || data.length === 0) {
-            photoGrid.innerHTML = "<p>⚠️ 此病患目前沒有照片紀錄</p>";
-            return;
-          }
+    document.getElementById("backIndex").onclick = () => {
+      window.location.href = `/index?patient=${patientId}`;
+    };
 
-          photoGrid.innerHTML = "";
-          data.forEach(record => {
-            const card = document.createElement("div");
-            card.className = "photo-card";
+    fetch(`/history_data?patient=${patientId}`)
+      .then(res => res.json())
+      .then(records => {
+        if (!records.length) {
+          photoGrid.innerHTML = "<p>尚無歷史照片</p>";
+          return;
+        }
 
-            const img = document.createElement("img");
-            img.src = record.image_url;
-            img.alt = "舌苔照片";
+        records.forEach(record => {
+          const wrapper = document.createElement("div");
+          wrapper.className = "photo-card";
 
-            card.onclick = () => {
-              Swal.fire({
-                title: "🧠 舌苔分析結果",
-                html: `
-                  <strong>舌苔主色：</strong> ${record.main_color}<br><br>
-                  <strong>中醫推論：</strong><br>${record.comment}
-                `,
-                confirmButtonText: "關閉"
-              });
-            };
+          const img = document.createElement("img");
+          img.src = record.image_url;
+          img.alt = "舌苔照片";
 
-            card.appendChild(img);
-            photoGrid.appendChild(card);
-          });
-        })
-        .catch(err => {
-          console.error("❌ 載入歷史資料失敗", err);
-          photoGrid.innerHTML = "<p>❌ 載入歷史資料時出現錯誤</p>";
+          img.onclick = () => {
+            Swal.fire({
+              title: "🧠 中醫推論",
+              html: `
+                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
+                <strong>推論內容：</strong><br>${record.comment}
+              `,
+              icon: "info",
+              confirmButtonText: "關閉"
+            });
+          };
+
+          wrapper.appendChild(img);
+          photoGrid.appendChild(wrapper);
         });
-    }
+      });
   </script>
 </body>
 </html>
