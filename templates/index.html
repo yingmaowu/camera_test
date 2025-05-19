@@ -23,11 +23,14 @@
       max-width: 500px;
       margin: auto;
       overflow: hidden;
+      aspect-ratio: 3/4;
+      background: black;
     }
 
     video {
-      width: 150%;               /* 模擬放大 1.5x */
+      width: 150%;
       transform: translateX(-25%);
+      object-fit: cover;
       border-radius: 10px;
     }
 
@@ -80,15 +83,13 @@
     let snapshotBlob = null;
 
     navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: "environment" }
-      }
+      video: { facingMode: { ideal: "environment" } }
     })
     .then(stream => {
       video.srcObject = stream;
       video.onloadedmetadata = () => {
         video.play();
-        setTimeout(drawOverlay, 500); // 等待 metadata fully loaded
+        setTimeout(drawOverlay, 500);
       };
     })
     .catch(err => {
@@ -98,7 +99,6 @@
     function drawOverlay() {
       const vw = video.videoWidth;
       const vh = video.videoHeight;
-
       canvas.width = vw;
       canvas.height = vh;
       const ctx = canvas.getContext("2d");
@@ -113,7 +113,6 @@
       const top = centerY - height / 2;
       const bottom = centerY + height / 2;
 
-      // 舌頭輪廓
       ctx.beginPath();
       ctx.moveTo(left, top + 20);
       ctx.bezierCurveTo(left, centerY, centerX - width * 0.2, bottom, centerX, bottom);
@@ -170,8 +169,19 @@
             formData.append("patient_id", patientId);
             fetch("/upload", { method: "POST", body: formData })
               .then(res => res.json())
-              .then(() => {
-                window.location.href = `/history?patient=${patientId}`;
+              .then(data => {
+                Swal.fire({
+                  title: "🧠 中醫判讀結果",
+                  html: `
+                    <b>舌苔主色：</b> ${data["舌苔主色"]}<br>
+                    <b>推論：</b> ${data["中醫推論"]}<br>
+                    <b>建議：</b> ${data["醫療建議"]}
+                  `,
+                  icon: "info",
+                  confirmButtonText: "查看歷史照片"
+                }).then(() => {
+                  window.location.href = `/history?patient=${patientId}`;
+                });
               })
               .catch(err => {
                 Swal.fire("❌ 上傳失敗", err.message, "error");
