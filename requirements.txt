@@ -4,3 +4,4 @@ numpy
 cloudinary
 pymongo
 python-dotenv
+gunicorn
