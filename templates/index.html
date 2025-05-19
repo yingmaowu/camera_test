@@ -2,64 +2,61 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>舌苔辨識相機</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f0f0;
-      text-align: center;
       margin: 0;
-      padding: 1rem;
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
     }
     h2 {
-      margin: 1rem 0;
+      margin: 1rem;
     }
     #videoWrapper {
       position: relative;
       width: 100%;
-      max-width: 480px;
+      max-width: 500px;
       margin: auto;
     }
-    video, canvas {
+    video {
       width: 100%;
       border-radius: 10px;
-      background: #000;
+      display: block;
     }
     canvas {
       position: absolute;
       top: 0;
       left: 0;
-      pointer-events: none;
       z-index: 10;
+      pointer-events: none;
     }
     button {
       margin: 1rem 0.5rem;
-      padding: 0.6rem 1rem;
-      font-size: 1.2rem;
-      border-radius: 8px;
+      padding: 0.6rem 1.2rem;
+      font-size: 1.1rem;
       border: none;
-      background-color: #4a90e2;
+      border-radius: 6px;
+      background: #4a90e2;
       color: white;
       cursor: pointer;
     }
     button:hover {
-      background-color: #357ABD;
+      background: #357ABD;
     }
   </style>
 </head>
 <body>
-  <h2>📸 舌苔辨識相機</h2>
-
+  <h2>舌苔辨識相機</h2>
   <div id="videoWrapper">
-    <video id="camera" autoplay playsinline></video>
+    <video id="camera" autoplay muted playsinline></video>
     <canvas id="overlay"></canvas>
   </div>
-
   <div>
     <button id="captureBtn">拍照</button>
-    <button id="historyBtn">查看歷史紀錄</button>
+    <button id="historyBtn">查看歷史照片</button>
   </div>
 
   <script>
@@ -70,53 +67,53 @@
 
     const urlParams = new URLSearchParams(window.location.search);
     const patientId = urlParams.get("patient") || "";
-
     let snapshotBlob = null;
 
-    const constraints = {
+    navigator.mediaDevices.getUserMedia({
       video: {
-        facingMode: { exact: "environment" },
-        width: { ideal: 1280 },
-        height: { ideal: 720 }
-        // zoom 無效時改用裁切模擬
+        facingMode: { ideal: "environment" }
       }
-    };
-
-    navigator.mediaDevices.getUserMedia(constraints)
-      .then(stream => {
-        video.srcObject = stream;
-        video.onloadeddata = drawOverlay;
-      })
-      .catch(err => {
-        Swal.fire("❌ 鏡頭啟動失敗", err.message, "error");
-      });
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+        drawOverlay();
+      };
+    })
+    .catch(err => {
+      Swal.fire("❌ 相機無法啟動", err.message, "error");
+    });
 
     function drawOverlay() {
       const ctx = canvas.getContext("2d");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const centerX = canvas.width / 2;
       const centerY = canvas.height * 0.65;
-      const tongueWidth = canvas.width * 0.35;
-      const tongueHeight = canvas.height * 0.5;
-      const leftX = centerX - tongueWidth / 2;
-      const rightX = centerX + tongueWidth / 2;
-      const topY = centerY - tongueHeight / 2;
-      const bottomY = centerY + tongueHeight / 2;
+      const width = canvas.width * 0.35;
+      const height = canvas.height * 0.5;
+      const left = centerX - width / 2;
+      const right = centerX + width / 2;
+      const top = centerY - height / 2;
+      const bottom = centerY + height / 2;
 
-      // 舌頭輪廓
       ctx.beginPath();
-      ctx.moveTo(leftX, topY + 20);
-      ctx.bezierCurveTo(leftX, centerY, centerX - tongueWidth * 0.2, bottomY, centerX, bottomY);
-      ctx.bezierCurveTo(centerX + tongueWidth * 0.2, bottomY, rightX, centerY, rightX, topY + 20);
-      ctx.bezierCurveTo(rightX, topY - 15, leftX, topY - 15, leftX, topY + 20);
+      ctx.moveTo(left, top + 20);
+      ctx.bezierCurveTo(left, centerY, centerX - width * 0.2, bottom, centerX, bottom);
+      ctx.bezierCurveTo(centerX + width * 0.2, bottom, right, centerY, right, top + 20);
+      ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
       ctx.closePath();
       ctx.strokeStyle = "#ff69b4";
       ctx.lineWidth = 3;
       ctx.stroke();
 
-      // 九宮格
+      drawGrid(ctx, left, top + 20, right, bottom);
+    }
+
+    function drawGrid(ctx, leftX, topY, rightX, bottomY) {
       const gridWidth = rightX - leftX;
       const gridHeight = bottomY - topY;
       ctx.strokeStyle = "red";
@@ -126,6 +123,7 @@
         ctx.moveTo(leftX + (gridWidth / 3) * i, topY);
         ctx.lineTo(leftX + (gridWidth / 3) * i, bottomY);
         ctx.stroke();
+
         ctx.beginPath();
         ctx.moveTo(leftX, topY + (gridHeight / 3) * i);
         ctx.lineTo(rightX, topY + (gridHeight / 3) * i);
@@ -134,39 +132,18 @@
     }
 
     captureBtn.addEventListener("click", () => {
-      const zoom = 2.0;
-
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth;
       snap.height = video.videoHeight;
       const ctx = snap.getContext("2d");
-
-      const cropW = snap.width / zoom;
-      const cropH = snap.height / zoom;
-      const startX = (snap.width - cropW) / 2;
-      const startY = (snap.height - cropH) / 2;
-
-      ctx.drawImage(video, startX, startY, cropW, cropH, 0, 0, snap.width, snap.height);
-      ctx.drawImage(canvas, 0, 0); // 保留 overlay
-
-      const timestamp = new Date().toLocaleString("zh-TW", {
-        hour12: false,
-        year: "numeric", month: "2-digit", day: "2-digit",
-        hour: "2-digit", minute: "2-digit", second: "2-digit"
-      });
-
-      ctx.fillStyle = "rgba(0,0,0,0.5)";
-      ctx.fillRect(0, snap.height - 30, snap.width, 30);
-      ctx.fillStyle = "white";
-      ctx.font = "16px sans-serif";
-      ctx.fillText(`拍攝時間：${timestamp}`, 10, snap.height - 10);
+      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(canvas, 0, 0);
 
       snap.toBlob(blob => {
         snapshotBlob = blob;
-
         Swal.fire({
           title: "📸 拍照完成",
-          text: "是否上傳並查看？",
+          text: "是否上傳並查看紀錄？",
           showCancelButton: true,
           confirmButtonText: "確認上傳",
           cancelButtonText: "重新拍照"
@@ -176,9 +153,9 @@
             formData.append("image", snapshotBlob);
             formData.append("patient_id", patientId);
             fetch("/upload", { method: "POST", body: formData })
-              .then(() => {
-                window.location.href = `/history?patient=${patientId}`;
-              });
+              .then(res => res.json())
+              .then(() => window.location.href = `/history?patient=${patientId}`)
+              .catch(err => Swal.fire("❌ 上傳失敗", err.message, "error"));
           } else {
             snapshotBlob = null;
           }
