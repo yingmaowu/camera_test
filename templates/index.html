@@ -2,44 +2,44 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>舌苔辨識相機</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>舌苔辨識相機</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f0f0;
-      text-align: center;
       margin: 0;
-      padding: 2rem;
+      font-family: sans-serif;
+      text-align: center;
+      background: #f0f0f0;
     }
     #videoWrapper {
       position: relative;
-      max-width: 500px;
+      max-width: 100%;
       margin: auto;
     }
     video, canvas {
       width: 100%;
+      max-width: 500px;
+      height: auto;
       border-radius: 10px;
     }
-    button {
-      font-size: 1.1rem;
-      padding: 0.5rem 1.2rem;
-      margin: 1rem 0.5rem;
-      border: none;
-      border-radius: 8px;
-      background-color: #4a90e2;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.2s;
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      pointer-events: none;
+      z-index: 10;
     }
-    button:hover {
-      background-color: #357ABD;
+    button {
+      margin: 1rem 0.5rem;
+      padding: 0.6rem 1rem;
+      font-size: 1.2rem;
     }
   </style>
 </head>
 <body>
-  <h2>📷 舌苔辨識相機</h2>
+  <h2>舌苔辨識相機</h2>
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline></video>
     <canvas id="overlay"></canvas>
@@ -52,27 +52,27 @@
   <script>
     const video = document.getElementById("camera");
     const canvas = document.getElementById("overlay");
-    const captureBtn = document.getElementById("captureBtn");
-    const historyBtn = document.getElementById("historyBtn");
     const urlParams = new URLSearchParams(window.location.search);
-    const patientId = urlParams.get("patient");
-    let snapshotBlob = null;
+    const patientId = urlParams.get("patient") || "";
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } })
-      .then(stream => {
-        video.srcObject = stream;
-        video.onloadeddata = drawOverlay;
-      })
-      .catch(err => {
-        Swal.fire("❌ 鏡頭啟動失敗", err.message, "error");
-      });
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { exact: "environment" },
+        zoom: 2
+      }
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      video.onloadeddata = drawOverlay;
+    })
+    .catch(err => {
+      Swal.fire("❌ 鏡頭啟動失敗", err.message, "error");
+    });
 
     function drawOverlay() {
       const ctx = canvas.getContext("2d");
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
       const centerX = canvas.width / 2;
       const centerY = canvas.height * 0.65;
       const tongueWidth = canvas.width * 0.35;
@@ -82,6 +82,7 @@
       const topY = centerY - tongueHeight / 2;
       const bottomY = centerY + tongueHeight / 2;
 
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.beginPath();
       ctx.moveTo(leftX, topY + 20);
       ctx.bezierCurveTo(leftX, centerY, centerX - tongueWidth * 0.2, bottomY, centerX, bottomY);
@@ -112,7 +113,7 @@
       }
     }
 
-    captureBtn.addEventListener("click", () => {
+    document.getElementById("captureBtn").onclick = () => {
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth;
       snap.height = video.videoHeight;
@@ -120,36 +121,29 @@
       ctx.drawImage(video, 0, 0);
       ctx.drawImage(canvas, 0, 0);
       snap.toBlob(blob => {
-        snapshotBlob = blob;
         Swal.fire({
           title: "📸 拍照完成",
-          text: "是否上傳並查看？",
-          icon: "question",
+          text: "是否上傳並查看",
           showCancelButton: true,
           confirmButtonText: "確認上傳",
           cancelButtonText: "重新拍照"
         }).then(result => {
           if (result.isConfirmed) {
             const formData = new FormData();
-            formData.append("image", snapshotBlob);
+            formData.append("image", blob);
             formData.append("patient_id", patientId);
-
             fetch("/upload", { method: "POST", body: formData })
-              .then(res => res.json())
               .then(() => {
                 window.location.href = `/history?patient=${patientId}`;
-              })
-              .catch(err => {
-                Swal.fire("❌ 上傳失敗", err.message, "error");
               });
           }
         });
       }, "image/jpeg");
-    });
+    };
 
-    historyBtn.addEventListener("click", () => {
+    document.getElementById("historyBtn").onclick = () => {
       window.location.href = `/history?patient=${patientId}`;
-    });
+    };
   </script>
 </body>
 </html>
