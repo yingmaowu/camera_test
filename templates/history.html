@@ -27,6 +27,7 @@
     button {
       font-size: 1rem;
       padding: 0.5rem 1.2rem;
+      margin: 0.5rem 0;
       border: none;
       border-radius: 8px;
       background-color: #4a90e2;
@@ -64,12 +65,23 @@
     .photo-card img {
       width: 100%;
       display: block;
+      object-fit: cover;
     }
 
     .timestamp {
+      padding: 0.4rem;
       font-size: 0.9rem;
       color: #666;
-      padding: 0.4rem;
+    }
+
+    @media (max-width: 480px) {
+      body {
+        padding: 1rem;
+      }
+
+      h2 {
+        font-size: 1.2rem;
+      }
     }
   </style>
 </head>
@@ -92,6 +104,11 @@
       window.location.href = `/index?patient=${patientId}`;
     };
 
+    function formatTime(iso) {
+      const d = new Date(iso);
+      return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    }
+
     fetch(`/history_data?patient=${patientId}`)
       .then(res => res.json())
       .then(records => {
@@ -108,17 +125,14 @@
           img.src = record.image_url;
           img.alt = "舌苔照片";
 
-          const time = new Date(record.timestamp).toLocaleString("zh-TW", {
-            year: "numeric", month: "2-digit", day: "2-digit",
-            hour: "2-digit", minute: "2-digit", second: "2-digit",
-            hour12: false
-          });
+          const time = document.createElement("div");
+          time.className = "timestamp";
+          time.textContent = formatTime(record.timestamp);
 
-          const timeEl = document.createElement("div");
-          timeEl.className = "timestamp";
-          timeEl.textContent = `🕒 ${time}`;
+          card.appendChild(img);
+          card.appendChild(time);
 
-          img.onclick = () => {
+          card.onclick = () => {
             Swal.fire({
               title: "🧠 中醫推論",
               html: `
@@ -130,14 +144,12 @@
             });
           };
 
-          card.appendChild(img);
-          card.appendChild(timeEl);
           photoGrid.appendChild(card);
         });
       })
       .catch(err => {
-        photoGrid.innerHTML = "<p>❌ 無法載入照片</p>";
-        console.error("fetch history error", err);
+        console.error("載入失敗", err);
+        photoGrid.innerHTML = "<p>無法取得紀錄，請稍後再試。</p>";
       });
   </script>
 </body>
