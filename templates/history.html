@@ -97,36 +97,32 @@
       window.location.href = `/index?patient=${patientId}`;
     };
 
-    fetch(`/photos?patient=${patientId}`)
+    fetch(`/history_data?patient=${patientId}`)
       .then(res => res.json())
-      .then(urls => {
-        if (!urls.length) {
+      .then(records => {
+        if (!records.length) {
           photoGrid.innerHTML = "<p>尚無照片</p>";
           return;
         }
 
-        urls.forEach(url => {
+        records.forEach(record => {
           const wrapper = document.createElement("div");
           wrapper.className = "photo-card";
 
           const img = document.createElement("img");
-          img.src = url;
+          img.src = record.image_url;
           img.alt = "舌苔照片";
 
           img.onclick = () => {
-            fetch(`/analyze_color?path=${encodeURIComponent(url)}`)
-              .then(res => res.json())
-              .then(data => {
-                Swal.fire({
-                  title: "🧠 中醫推論",
-                  html: `
-                    <strong>舌苔主色：</strong> ${data["舌苔主色"]}<br><br>
-                    <strong>推論內容：</strong><br>${data["中醫推論"]}
-                  `,
-                  icon: "info",
-                  confirmButtonText: "關閉"
-                });
-              });
+            Swal.fire({
+              title: "🧠 中醫推論",
+              html: `
+                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
+                <strong>推論內容：</strong><br>${record.comment}
+              `,
+              icon: "info",
+              confirmButtonText: "關閉"
+            });
           };
 
           wrapper.appendChild(img);
