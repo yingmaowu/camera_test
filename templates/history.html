@@ -27,7 +27,6 @@
     button {
       font-size: 1rem;
       padding: 0.5rem 1.2rem;
-      margin: 0.5rem 0;
       border: none;
       border-radius: 8px;
       background-color: #4a90e2;
@@ -54,6 +53,7 @@
       overflow: hidden;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
     }
 
     .photo-card:hover {
@@ -65,16 +65,6 @@
       width: 100%;
       display: block;
       object-fit: cover;
-    }
-
-    @media (max-width: 480px) {
-      body {
-        padding: 1rem;
-      }
-
-      h2 {
-        font-size: 1.2rem;
-      }
     }
   </style>
 </head>
@@ -105,20 +95,20 @@
           return;
         }
 
-        records.forEach(record => {
+        records.forEach(r => {
           const wrapper = document.createElement("div");
           wrapper.className = "photo-card";
 
           const img = document.createElement("img");
-          img.src = record.image_url;
+          img.src = r.image_url;
           img.alt = "舌苔照片";
 
           img.onclick = () => {
             Swal.fire({
               title: "🧠 中醫推論",
               html: `
-                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
-                <strong>推論內容：</strong><br>${record.comment}
+                <strong>舌苔主色：</strong> ${r.main_color}<br><br>
+                <strong>推論內容：</strong><br>${r.comment}
               `,
               icon: "info",
               confirmButtonText: "關閉"
