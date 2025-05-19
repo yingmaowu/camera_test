@@ -42,23 +42,7 @@
     document.getElementById("nextBtn").addEventListener("click", () => {
       const id = document.getElementById("idInput").value.trim();
       if (!id) return Swal.fire("請輸入病患 ID", "", "warning");
-
-      fetch("/patients")
-        .then(res => res.json())
-        .then(existing => {
-          if (!existing.includes(id)) {
-            Swal.fire({
-              title: "📁 尚未記錄此病患",
-              text: "已為您建立新病患紀錄",
-              icon: "info",
-              confirmButtonText: "繼續"
-            }).then(() => {
-              window.location.href = `/index?patient=${id}`;
-            });
-          } else {
-            window.location.href = `/index?patient=${id}`;
-          }
-        });
+      window.location.href = `/index?patient=${id}`;
     });
   </script>
 </body>
