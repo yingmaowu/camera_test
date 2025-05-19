@@ -8,11 +8,14 @@
   <style>
     body {
       margin: 0;
-      font-family: sans-serif;
+      font-family: "Segoe UI", sans-serif;
+      background: #f0f0f0;
       text-align: center;
-      background: linear-gradient(to right, #fceabb, #f8b500);
+      padding: 1rem;
     }
-    h2 { margin-top: 1rem; }
+    h2 {
+      margin-top: 1rem;
+    }
     #videoWrapper {
       position: relative;
       width: 100%;
@@ -33,28 +36,30 @@
     }
     button {
       margin: 1rem 0.5rem;
-      padding: 0.7rem 1.5rem;
+      padding: 0.6rem 1.2rem;
       font-size: 1.2rem;
-      border-radius: 8px;
       border: none;
-      background-color: #4caf50;
+      border-radius: 8px;
+      background-color: #4a90e2;
       color: white;
       cursor: pointer;
     }
     button:hover {
-      background-color: #388e3c;
+      background-color: #357ABD;
     }
   </style>
 </head>
 <body>
   <h2>📷 舌苔辨識相機</h2>
+
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline></video>
     <canvas id="overlay"></canvas>
   </div>
+
   <div>
     <button id="captureBtn">📸 拍照</button>
-    <button id="historyBtn">📁 查看歷史</button>
+    <button id="historyBtn">📂 查看歷史照片</button>
   </div>
 
   <script>
@@ -67,6 +72,7 @@
     const patientId = urlParams.get("patient") || "";
     let snapshotBlob = null;
 
+    // 啟動相機
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { exact: "environment" } } })
       .then(stream => {
         video.srcObject = stream;
@@ -134,10 +140,9 @@
         Swal.fire({
           title: "📸 拍照完成",
           text: "是否上傳並查看？",
-          icon: "question",
           showCancelButton: true,
           confirmButtonText: "✅ 確認上傳",
-          cancelButtonText: "🔄 重新拍照"
+          cancelButtonText: "🔁 重新拍照"
         }).then(result => {
           if (result.isConfirmed) {
             const formData = new FormData();
@@ -146,9 +151,12 @@
             fetch("/upload", { method: "POST", body: formData })
               .then(() => {
                 window.location.href = `/history?patient=${patientId}`;
+              })
+              .catch(err => {
+                Swal.fire("❌ 上傳失敗", err.message, "error");
               });
           } else {
-            snapshotBlob = null;
+            snapshotBlob = null; // 清除照片
           }
         });
       }, "image/jpeg");
