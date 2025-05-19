@@ -6,58 +6,53 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
-      margin: 0;
-      height: 100vh;
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      background: linear-gradient(135deg, #dfe9f3 0%, #ffffff 100%);
-      font-family: 'Segoe UI', sans-serif;
-    }
-    .card {
-      background: #fff;
-      padding: 2rem;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.1);
       text-align: center;
+      margin-top: 5rem;
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f0f0;
     }
-    input, button {
-      font-size: 1.1rem;
-      padding: 0.6rem 1.2rem;
-      margin-top: 1rem;
-      border-radius: 8px;
+    input {
+      font-size: 1.2rem;
+      padding: 0.5rem;
+      width: 200px;
+      margin-right: 0.5rem;
+      border-radius: 6px;
       border: 1px solid #ccc;
     }
     button {
-      background-color: #4a90e2;
+      padding: 0.5rem 1rem;
+      font-size: 1.2rem;
+      background: #4a90e2;
       color: white;
       border: none;
+      border-radius: 6px;
       cursor: pointer;
     }
     button:hover {
-      background-color: #357ABD;
+      background: #357ABD;
     }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>👤 輸入病患 ID</h2>
-    <input id="idInput" placeholder="請輸入病患 ID" />
-    <br />
-    <button id="nextBtn">開始辨識</button>
-  </div>
+  <h2>請輸入病患 ID</h2>
+  <input id="idInput" placeholder="病患 ID">
+  <button id="nextBtn">開始</button>
 
   <script>
     document.getElementById("nextBtn").addEventListener("click", () => {
       const id = document.getElementById("idInput").value.trim();
-      if (!id) return Swal.fire("⚠️ 請輸入病患 ID");
+      if (!id) return Swal.fire("請輸入病患 ID", "", "warning");
 
       fetch("/patients")
         .then(res => res.json())
         .then(existing => {
           if (!existing.includes(id)) {
-            Swal.fire("📁 已替您建立病患資料夾").then(() => {
+            Swal.fire({
+              title: "📁 尚未記錄此病患",
+              text: "已為您建立新病患紀錄",
+              icon: "info",
+              confirmButtonText: "繼續"
+            }).then(() => {
               window.location.href = `/index?patient=${id}`;
             });
           } else {
