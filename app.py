@@ -9,10 +9,10 @@ import tempfile
 import io
 from bson import ObjectId
 from color_analysis import analyze_image_color
+from opencv_module import analyze_image_with_visual_feedback  # 你需要建立這個檔案
 
 load_dotenv()
-
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static')
 
 # MongoDB Atlas 連線
 mongo_client = MongoClient(os.environ.get("MONGO_URI"))
@@ -54,15 +54,21 @@ def upload_image():
         image_bytes = image.read()
         image_stream = io.BytesIO(image_bytes)
 
+        # 上傳原始影像到 Cloudinary
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
+        # 儲存本地檔案以進行分析與可視化
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
+
+            # ✅ 同時執行主色分析與 OpenCV 標記圖產出
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
+            analyze_image_with_visual_feedback(tmp.name, debug_save_path="static/processed/tongue_marked.jpg")
             os.remove(tmp.name)
 
+        # 儲存紀錄
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
