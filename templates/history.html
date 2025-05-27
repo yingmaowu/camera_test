@@ -114,50 +114,53 @@
           card.appendChild(img);
           card.appendChild(time);
           card.onclick = () => {
-           Swal.fire({
-  title: "🧠 中醫推論",
-  html: `
-    <strong>舌苔主色：</strong> ${record.main_color}<br><br>
-    <strong>推論內容：</strong><br>${record.comment}<br><br>
-    <strong>醫療建議：</strong><br>${record.advice}<br><br>
-    <div style="margin-top: 1rem;">
-      <button id="previewMarked" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 6px;">顯示舌苔標記圖</button>
-      <button id="deleteBtn" style="margin: 0.25rem; padding: 0.5rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 6px;">刪除紀錄</button>
-    </div>
-  `,
-  showConfirmButton: false,
-  didOpen: () => {
-    document.getElementById("previewMarked").onclick = () => {
-      markedImage.src = `/static/processed/${record._id}.jpg?${Date.now()}`;
-      markedImage.style.display = "block";
-    };
-    document.getElementById("deleteBtn").onclick = () => {
-      Swal.fire({
-        title: "確定要刪除？",
-        text: "這筆資料將無法復原",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "刪除",
-        cancelButtonText: "取消"
-      }).then(result => {
-        if (result.isConfirmed) {
-          fetch("/delete_record", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ id: record._id })
-          }).then(res => res.json())
-            .then(resp => {
-              if (resp.success) {
-                Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
-              } else {
-                Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
-              }
-            });
-        }
+  Swal.fire({
+    title: "🧠 中醫推論",
+    html: `
+      <strong>舌苔主色：</strong> ${record.main_color}<br><br>
+      <strong>推論內容：</strong><br>${record.comment}<br><br>
+      <strong>醫療建議：</strong><br>${record.advice}<br><br>
+      <div style="margin-top: 1rem;">
+        <img src="${record.image_url}" style="max-width: 90%; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);"><br>
+        <button id="previewMarked" style="margin: 0.5rem; padding: 0.5rem 1rem; background: #27ae60; color: white; border: none; border-radius: 6px;">顯示舌苔標記圖</button>
+        <button id="deleteBtn" style="margin: 0.5rem; padding: 0.5rem 1rem; background: #e74c3c; color: white; border: none; border-radius: 6px;">刪除紀錄</button>
+      </div>
+    `,
+    showConfirmButton: false,
+    didOpen: () => {
+      document.getElementById("previewMarked").onclick = () => {
+        markedImage.src = `/static/processed/${record._id}.jpg?${Date.now()}`;
+        markedImage.style.display = "block";
       };
-    };
-  }
-});
+      document.getElementById("deleteBtn").onclick = () => {
+        Swal.fire({
+          title: "確定要刪除？",
+          text: "這筆資料將無法復原",
+          icon: "warning",
+          showCancelButton: true,
+          confirmButtonText: "刪除",
+          cancelButtonText: "取消"
+        }).then(result => {
+          if (result.isConfirmed) {
+            fetch("/delete_record", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ id: record._id })
+            }).then(res => res.json())
+              .then(resp => {
+                if (resp.success) {
+                  Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
+                } else {
+                  Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
+                }
+              });
+          }
+        };
+      };
+    }
+  });
+};
+
 
           photoGrid.appendChild(card);
         });
