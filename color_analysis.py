@@ -33,7 +33,7 @@ def determine_category_from_rgb(r, g, b):
     else:
         return "未知"
 
-def is_majority_tongue_like(crop, threshold=0.45):
+def is_majority_tongue_like(crop, threshold=0.85):
     reshaped = crop.reshape(-1, 3)
     count = 0
     for pixel in reshaped:
@@ -60,7 +60,7 @@ def analyze_image_color(image_path):
     avg = np.mean(crop.reshape(-1, 3), axis=0)
     r, g, b = map(int, avg)
 
-    sufficient, ratio = is_majority_tongue_like(crop, threshold=0.45)
+    sufficient, ratio = is_majority_tongue_like(crop, threshold=0.85)
     if not sufficient:
         return "非舌頭", f"舌頭比例過低（{round(ratio*100, 2)}%）", "請重新拍照，確保舌頭完整位於九宮格內", (r, g, b)
 
