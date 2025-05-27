@@ -2,7 +2,7 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <title>歷史照片紀錄</title>
+  <title>歷史照片紀錄（含舌苔標記圖）</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
@@ -64,6 +64,12 @@
       font-size: 0.9rem;
       color: #666;
     }
+    .marked-preview {
+      max-width: 600px;
+      margin: 2rem auto;
+      border: 4px solid #4CAF50;
+      border-radius: 10px;
+    }
   </style>
 </head>
 <body>
@@ -72,18 +78,24 @@
     <button onclick="window.location.href='/'">回病患 ID 輸入</button>
     <button id="backIndex">回拍照頁</button>
   </div>
+  <img id="markedImage" class="marked-preview" style="display:none;" />
   <div id="photoGrid"></div>
+
   <script>
     const photoGrid = document.getElementById("photoGrid");
+    const markedImage = document.getElementById("markedImage");
     const urlParams = new URLSearchParams(window.location.search);
     const patientId = urlParams.get("patient") || "";
+
     document.getElementById("backIndex").onclick = () => {
       window.location.href = `/index?patient=${patientId}`;
     };
+
     function formatTime(iso) {
       const d = new Date(iso);
       return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
     }
+
     fetch(`/history_data?patient=${patientId}`)
       .then(res => res.json())
       .then(records => {
@@ -91,7 +103,7 @@
           photoGrid.innerHTML = "<p>尚無照片</p>";
           return;
         }
-        records.forEach(record => {
+        records.forEach((record) => {
           const card = document.createElement("div");
           card.className = "photo-card";
           const img = document.createElement("img");
@@ -108,34 +120,13 @@
                 <strong>舌苔主色：</strong> ${record.main_color}<br><br>
                 <strong>推論內容：</strong><br>${record.comment}<br><br>
                 <strong>醫療建議：</strong><br>${record.advice}<br><br>
-                <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;">刪除這筆紀錄</button>
+                <button id="previewMarked" style="margin-top:1rem;padding:0.5rem 1rem;background:#27ae60;color:white;border:none;border-radius:6px;">顯示舌苔標記圖</button>
               `,
               showConfirmButton: false,
               didOpen: () => {
-                document.getElementById("deleteBtn").onclick = () => {
-                  Swal.fire({
-                    title: "確定要刪除？",
-                    text: "這筆資料將無法復原",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "刪除",
-                    cancelButtonText: "取消"
-                  }).then(result => {
-                    if (result.isConfirmed) {
-                      fetch("/delete_record", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: record._id })
-                      }).then(res => res.json())
-                        .then(resp => {
-                          if (resp.success) {
-                            Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
-                          } else {
-                            Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
-                          }
-                        });
-                    }
-                  });
+                document.getElementById("previewMarked").onclick = () => {
+                  markedImage.src = `/static/processed/tongue_marked.jpg?${Date.now()}`;
+                  markedImage.style.display = "block";
                 };
               }
             });
