@@ -107,10 +107,37 @@
               html: `
                 <strong>舌苔主色：</strong> ${record.main_color}<br><br>
                 <strong>推論內容：</strong><br>${record.comment}<br><br>
-                <strong>醫療建議：</strong><br>${record.advice}
+                <strong>醫療建議：</strong><br>${record.advice}<br><br>
+                <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;">刪除這筆紀錄</button>
               `,
-              icon: "info",
-              confirmButtonText: "關閉"
+              showConfirmButton: false,
+              didOpen: () => {
+                document.getElementById("deleteBtn").onclick = () => {
+                  Swal.fire({
+                    title: "確定要刪除？",
+                    text: "這筆資料將無法復原",
+                    icon: "warning",
+                    showCancelButton: true,
+                    confirmButtonText: "刪除",
+                    cancelButtonText: "取消"
+                  }).then(result => {
+                    if (result.isConfirmed) {
+                      fetch("/delete_record", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ id: record._id })
+                      }).then(res => res.json())
+                        .then(resp => {
+                          if (resp.success) {
+                            Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
+                          } else {
+                            Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
+                          }
+                        });
+                    }
+                  });
+                };
+              }
             });
           };
           photoGrid.appendChild(card);
