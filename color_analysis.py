@@ -33,27 +33,21 @@ def determine_category_from_rgb(r, g, b):
     else:
         return "未知"
 
-def determine_category_from_rgb(r, g, b):
-    brightness = (r + g + b) / 3
-    if r > 130 and g < 140 and b < 140 and brightness < 190:
-        return "正常舌色"
-    elif r > 140 and g > 110 and b < 100 and brightness > 150:
-        return "黃色"
-    elif brightness > 180 and min(r, g, b) > 160:
-        return "白色厚重"
-    elif brightness < 100 and max(abs(r - g), abs(g - b), abs(r - b)) < 60:
-        return "黑灰色"
-    else:
-        return "未知"
-
-def is_tongue_like_rgb(r, g, b):
-    brightness = (r + g + b) / 3
-    return (
-        r > 120 and
-        60 < g < 140 and
-        60 < b < 140 and
-        100 < brightness < 220
-    )
+def is_majority_tongue_like(crop, threshold=0.85):
+    reshaped = crop.reshape(-1, 3)
+    count = 0
+    for pixel in reshaped:
+        r, g, b = pixel
+        brightness = (r + g + b) / 3
+        if (
+            r > 120 and
+            60 < g < 140 and
+            60 < b < 140 and
+            100 < brightness < 220
+        ):
+            count += 1
+    ratio = count / len(reshaped)
+    return ratio >= threshold, ratio
 
 def analyze_image_color(image_path):
     image = Image.open(image_path).convert("RGB")
@@ -66,8 +60,9 @@ def analyze_image_color(image_path):
     avg = np.mean(crop.reshape(-1, 3), axis=0)
     r, g, b = map(int, avg)
 
-    if not is_tongue_like_rgb(r, g, b):
-        return "非舌頭", "未偵測到舌苔區域", "請重新拍照，確保九宮格內為舌頭", (r, g, b)
+    sufficient, ratio = is_majority_tongue_like(crop, threshold=0.85)
+    if not sufficient:
+        return "非舌頭", f"舌頭比例過低（{round(ratio*100, 2)}%）", "請重新拍照，確保舌頭完整位於九宮格內", (r, g, b)
 
     category = determine_category_from_rgb(r, g, b)
     info = color_map.get(category, {"comment": "無法判斷", "advice": "請重新拍照"})
