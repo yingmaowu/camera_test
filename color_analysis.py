@@ -33,7 +33,7 @@ def determine_category_from_rgb(r, g, b):
     else:
         return "未知"
 
-def is_majority_tongue_like(crop, threshold=0.2):
+def is_majority_tongue_like(crop, threshold=0.45):
     reshaped = crop.reshape(-1, 3)
     count = 0
     for pixel in reshaped:
