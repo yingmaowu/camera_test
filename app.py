@@ -7,6 +7,7 @@ import cloudinary
 import cloudinary.uploader
 import tempfile
 import io
+from bson import ObjectId
 from color_analysis import analyze_image_color
 
 load_dotenv()
@@ -99,6 +100,22 @@ def get_history_data():
         return jsonify(records)
     except Exception as e:
         return jsonify({"error": "查詢失敗", "detail": str(e)}), 500
+
+@app.route("/delete_record", methods=["POST"])
+def delete_record():
+    data = request.get_json()
+    record_id = data.get("id")
+    if not record_id:
+        return jsonify({"error": "Missing ID"}), 400
+
+    try:
+        result = records_collection.delete_one({"_id": ObjectId(record_id)})
+        if result.deleted_count == 1:
+            return jsonify({"success": True})
+        else:
+            return jsonify({"error": "Record not found"}), 404
+    except Exception as e:
+        return jsonify({"error": "刪除失敗", "detail": str(e)}), 500
 
 @app.route("/patients", methods=["GET"])
 def list_patients():
