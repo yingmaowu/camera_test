@@ -144,6 +144,32 @@
       }
     }
 
+    function isTongueLikeColor(r, g, b) {
+      const brightness = (r + g + b) / 3;
+      return (
+        r > 120 &&
+        g > 60 && g < 140 &&
+        b > 60 && b < 140 &&
+        brightness > 100 && brightness < 220
+      );
+    }
+
+    function getGridCenterColor(canvas) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      const imageData = ctx.getImageData(w * 0.33, h * 0.33, w * 0.33, h * 0.33);
+      let r = 0, g = 0, b = 0;
+      const pixels = imageData.data;
+      const count = pixels.length / 4;
+      for (let i = 0; i < pixels.length; i += 4) {
+        r += pixels[i];
+        g += pixels[i + 1];
+        b += pixels[i + 2];
+      }
+      return [Math.round(r / count), Math.round(g / count), Math.round(b / count)];
+    }
+
     captureBtn.addEventListener("click", () => {
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth;
@@ -151,6 +177,13 @@
       const ctx = snap.getContext("2d");
       ctx.drawImage(video, 0, 0);
       ctx.drawImage(canvas, 0, 0);
+
+      const [r, g, b] = getGridCenterColor(snap);
+      if (!isTongueLikeColor(r, g, b)) {
+        Swal.fire("⚠️ 九宮格範圍內未偵測到舌苔", "請對準舌頭再拍照", "warning");
+        snapshotBlob = null;
+        return;
+      }
 
       snap.toBlob(blob => {
         snapshotBlob = blob;
