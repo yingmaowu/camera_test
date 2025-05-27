@@ -176,7 +176,7 @@
       ctx.drawImage(canvas, 0, 0);
 
       const tongueRatio = getTongueRatio(snap);
-      if (tongueRatio < 0.5) {
+      if (tongueRatio < 0.2) {
         Swal.fire("⚠️ 舌頭比例過低", "請確保舌頭完整位於九宮格內再拍照", "warning");
         snapshotBlob = null;
         return;
