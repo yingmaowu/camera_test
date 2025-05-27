@@ -9,7 +9,7 @@ import tempfile
 import io
 from bson import ObjectId
 from color_analysis import analyze_image_color
-from opencv_module import analyze_image_with_visual_feedback  # 你需要建立這個檔案
+from opencv_module import analyze_image_with_visual_feedback  # ✅ OpenCV 模組
 
 load_dotenv()
 app = Flask(__name__, static_folder='static')
@@ -58,17 +58,25 @@ def upload_image():
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # 儲存本地檔案以進行分析與可視化
+        # 儲存本地檔案以進行分析與視覺化
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
 
-            # ✅ 同時執行主色分析與 OpenCV 標記圖產出
+            # 主色分析
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            analyze_image_with_visual_feedback(tmp.name, debug_save_path="static/processed/tongue_marked.jpg")
+
+            # OpenCV 視覺標記分析
+            feedback = analyze_image_with_visual_feedback(
+                tmp.name, debug_save_path="static/processed/tongue_marked.jpg"
+            )
             os.remove(tmp.name)
 
-        # 儲存紀錄
+            if feedback.get("error"):
+                print("⚠️ OpenCV 分析失敗：", feedback["error"])
+                comment = "無法標記舌苔"
+                advice = "請重新拍照，讓舌頭清晰可見"
+
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
