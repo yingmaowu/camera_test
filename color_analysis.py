@@ -26,7 +26,6 @@ def extract_tongue_mask(image_path):
     img = cv2.imread(image_path)
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
-    # 紅色範圍遮罩（兩段式紅色）
     lower_red1 = np.array([0, 50, 50])
     upper_red1 = np.array([10, 255, 255])
     lower_red2 = np.array([160, 50, 50])
@@ -41,13 +40,12 @@ def analyze_image_color(image_path):
     img, mask = extract_tongue_mask(image_path)
     masked_pixels = img[mask > 0]
 
-    if len(masked_pixels) < 100:  # 遮罩太小
+    if len(masked_pixels) < 100:
         return "非舌頭", "偵測到的舌頭面積過小", "請重新拍照，確保舌頭位於鏡頭中間並清晰", (0, 0, 0)
 
     avg_color = np.mean(masked_pixels, axis=0)
     r, g, b = map(int, avg_color[::-1])  # BGR to RGB
 
-    # 分類
     brightness = (r + g + b) / 3
     if r > 130 and g < 140 and b < 140 and brightness < 190:
         category = "正常舌色"
