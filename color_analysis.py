@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-from PIL import Image
 
-# 舌苔色彩對應中醫建議
 color_map = {
     "黃色": {
         "comment": "火氣大，需調理肝膽系統",
@@ -36,27 +34,38 @@ def extract_tongue_mask(image_path):
     mask = cv2.bitwise_or(mask1, mask2)
     return img, mask
 
+def detect_blur(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+    return lap_var, lap_var < 80  # 門檻值可調整，越小越模糊
+
 def analyze_image_color(image_path):
     img, mask = extract_tongue_mask(image_path)
-    masked_pixels = img[mask > 0]
+    blur_score, is_blurred = detect_blur(img)
+    if is_blurred:
+        return "模糊", f"圖片模糊度過高（Laplacian={blur_score:.2f}）", "請重新拍照，保持穩定與對焦", (0, 0, 0)
 
+    masked_pixels = img[mask > 0]
     if len(masked_pixels) < 100:
         return "非舌頭", "偵測到的舌頭面積過小", "請重新拍照，確保舌頭位於鏡頭中間並清晰", (0, 0, 0)
 
-    avg_color = np.mean(masked_pixels, axis=0)
-    r, g, b = map(int, avg_color[::-1])  # BGR to RGB
+    # Lab 色彩分析
+    lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
+    masked_lab_pixels = lab[mask > 0]
+    avg_lab = np.mean(masked_lab_pixels, axis=0)
+    L, A, B = map(int, avg_lab)
 
-    brightness = (r + g + b) / 3
-    if r > 130 and g < 140 and b < 140 and brightness < 190:
+    # 分類判斷
+    if A > 140 and L > 120:
         category = "正常舌色"
-    elif r > 140 and g > 110 and b < 100 and brightness > 150:
+    elif B > 145 and L > 135:
         category = "黃色"
-    elif brightness > 180 and min(r, g, b) > 160:
+    elif L > 190 and A < 135:
         category = "白色厚重"
-    elif brightness < 100 and max(abs(r - g), abs(g - b), abs(r - b)) < 60:
+    elif L < 90 and A < 135 and B < 135:
         category = "黑灰色"
     else:
-        return "未知", "無法判斷", "請重新拍攝更清晰的圖片", (r, g, b)
+        return "未知", "無法判斷舌苔色彩", "請重新拍攝更清晰且光線正常的圖片", (L, A, B)
 
     info = color_map[category]
-    return category, info["comment"], info["advice"], (r, g, b)
+    return category, info["comment"], info["advice"], (L, A, B)
