@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>舌苔辨識相機</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
@@ -12,40 +12,40 @@
       background: #f0f0f0;
       text-align: center;
     }
-    h2 { margin-top: 1rem; }
     #videoWrapper {
       position: relative;
       width: 100%;
       max-width: 500px;
       margin: auto;
       overflow: hidden;
-      background: black;
       aspect-ratio: 3/4;
+      background: black;
     }
     video {
+      position: absolute;
+      top: 0; left: 0;
       width: 100%;
+      height: 100%;
       object-fit: cover;
     }
     canvas {
       position: absolute;
-      top: 0;
-      left: 0;
+      top: 0; left: 0;
       width: 100%;
-      height: auto;
-      z-index: 10;
+      height: 100%;
       pointer-events: none;
+      z-index: 10;
     }
     button {
       margin: 1rem 0.5rem;
       padding: 0.6rem 1.2rem;
-      font-size: 1.1rem;
+      font-size: 1rem;
       border: none;
       border-radius: 6px;
       background: #4a90e2;
       color: white;
       cursor: pointer;
     }
-    button:hover { background-color: #357ABD; }
   </style>
 </head>
 <body>
@@ -56,106 +56,96 @@
   </div>
   <div>
     <button id="captureBtn">拍照</button>
-    <button id="historyBtn">查看歷史照片</button>
+    <button id="historyBtn">查看歷史</button>
   </div>
 
   <script>
     const video = document.getElementById("camera");
     const canvas = document.getElementById("overlay");
-    const ctx = canvas.getContext("2d");
     const captureBtn = document.getElementById("captureBtn");
     const historyBtn = document.getElementById("historyBtn");
-    const patientId = new URLSearchParams(window.location.search).get("patient");
+    const patientId = new URLSearchParams(location.search).get("patient");
 
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } }
-    })
-    .then(stream => {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        video.play();
-        drawOverlay();
-      };
-    })
-    .catch(err => {
-      Swal.fire("❌ 相機啟動失敗", err.message, "error");
-    });
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
+      .then(stream => {
+        video.srcObject = stream;
+        video.onloadedmetadata = () => {
+          video.play();
+          drawOverlay();
+        };
+      });
 
     function drawOverlay() {
+      const ctx = canvas.getContext("2d");
       const vw = video.videoWidth;
       const vh = video.videoHeight;
       canvas.width = vw;
       canvas.height = vh;
 
-      ctx.clearRect(0, 0, vw, vh);
-      const centerX = vw / 2;
-      const centerY = vh / 2;
-      const width = vw * 0.5;
-      const height = vh * 0.6;
-      const left = centerX - width / 2;
-      const top = centerY - height / 2;
+      const cx = vw / 2;
+      const cy = vh / 2;
+      const w = vw * 0.4;
+      const h = vh * 0.5;
+      const left = cx - w / 2;
+      const right = cx + w / 2;
+      const top = cy - h / 2;
+      const bottom = cy + h / 2;
 
+      ctx.clearRect(0, 0, vw, vh);
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY, width/2, height/2, 0, 0, Math.PI * 2);
+      ctx.moveTo(left, top + 20);
+      ctx.bezierCurveTo(left, cy, cx - w * 0.2, bottom, cx, bottom);
+      ctx.bezierCurveTo(cx + w * 0.2, bottom, right, cy, right, top + 20);
+      ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
+      ctx.closePath();
       ctx.strokeStyle = "#ff69b4";
       ctx.lineWidth = 3;
       ctx.stroke();
     }
 
-    function getTongueRatio(snap) {
-      const ctx = snap.getContext("2d");
-      const data = ctx.getImageData(snap.width*0.33, snap.height*0.33, snap.width*0.33, snap.height*0.33).data;
-      let count = 0, total = data.length / 4;
+    function getTongueRatio(canvas) {
+      const ctx = canvas.getContext("2d");
+      const data = ctx.getImageData(canvas.width * 0.4, canvas.height * 0.4, canvas.width * 0.2, canvas.height * 0.2).data;
+      let count = 0;
       for (let i = 0; i < data.length; i += 4) {
-        let r = data[i], g = data[i+1], b = data[i+2];
-        if (r > 120 && g > 60 && g < 140 && b > 60 && b < 140) count++;
+        const [r, g, b] = [data[i], data[i+1], data[i+2]];
+        const avg = (r + g + b) / 3;
+        if (r > 120 && g < 140 && b < 140 && avg > 90) count++;
       }
-      return count / total;
+      return count / (data.length / 4);
     }
 
-    captureBtn.addEventListener("click", () => {
+    captureBtn.onclick = () => {
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth;
       snap.height = video.videoHeight;
-      const snapCtx = snap.getContext("2d");
-      snapCtx.drawImage(video, 0, 0);
-      snapCtx.drawImage(canvas, 0, 0);
+      const ctx = snap.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(canvas, 0, 0);
 
-      const tongueRatio = getTongueRatio(snap);
-      if (tongueRatio < 0.15) {
-        Swal.fire("⚠️ 舌頭比例過低", "請確保舌頭完整位於輪廓內再拍照", "warning");
+      const ratio = getTongueRatio(snap);
+      if (ratio < 0.1) {
+        Swal.fire("⚠️ 舌頭比例過低", "請調整角度與距離", "warning");
         return;
       }
 
       snap.toBlob(blob => {
-        const formData = new FormData();
-        formData.append("image", blob);
-        formData.append("patient_id", patientId);
-        fetch("/upload", { method: "POST", body: formData })
-          .then(res => res.json())
+        const fd = new FormData();
+        fd.append("image", blob);
+        fd.append("patient_id", patientId);
+        fetch("/upload", { method: "POST", body: fd })
+          .then(r => r.json())
           .then(data => {
-            Swal.fire({
-              title: "🧠 中醫判讀結果",
-              html: `
-                <b>舌苔主色：</b> ${data["舌苔主色"]}<br>
-                <b>推論：</b> ${data["中醫推論"]}<br>
-                <b>建議：</b> ${data["醫療建議"]}
-              `,
-              icon: "info",
-              confirmButtonText: "查看歷史照片"
-            }).then(() => {
+            Swal.fire("📸 拍照完成", `LAB: ${JSON.stringify(data.debug)}`, "info").then(() => {
               window.location.href = `/history?patient=${patientId}`;
             });
-          })
-          .catch(err => {
-            Swal.fire("❌ 上傳失敗", err.message, "error");
           });
-      }, "image/jpeg");
-    });
+      });
+    };
 
-    historyBtn.addEventListener("click", () => {
+    historyBtn.onclick = () => {
       window.location.href = `/history?patient=${patientId}`;
-    });
+    };
   </script>
 </body>
 </html>
