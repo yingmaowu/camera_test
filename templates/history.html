@@ -96,15 +96,15 @@
           card.appendChild(time);
 
           card.onclick = () => {
-            let fiveRegionsTable = "<table><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>";
+            let fiveRegionsTable = "<table><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>診斷</th><th>建議</th></tr>";
             if (record.five_regions && !record.five_regions.error) {
               Object.keys(record.five_regions).forEach(region => {
                 const r = record.five_regions[region];
                 const avg_lab = r.avg_lab.map(v => Math.round(v));
-                fiveRegionsTable += `<tr><td>${r.name}</td><td>${avg_lab[0]}</td><td>${avg_lab[1]}</td><td>${avg_lab[2]}</td><td>${r.diagnosis}</td></tr>`;
+                fiveRegionsTable += `<tr><td>${region}</td><td>${avg_lab[0]}</td><td>${avg_lab[1]}</td><td>${avg_lab[2]}</td><td>${r.診斷}</td><td>${r.建議}</td></tr>`;
               });
             } else {
-              fiveRegionsTable += "<tr><td colspan='5'>無法判斷</td></tr>";
+              fiveRegionsTable += "<tr><td colspan='6'>無法判斷</td></tr>";
             }
             fiveRegionsTable += "</table>";
 
