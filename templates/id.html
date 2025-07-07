@@ -17,9 +17,7 @@
       margin: 0;
     }
 
-    h2 {
-      margin-bottom: 1rem;
-    }
+    h2 { margin-bottom: 1rem; }
 
     input {
       padding: 0.6rem 1rem;
@@ -40,9 +38,7 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background-color: #357ABD;
-    }
+    button:hover { background-color: #357ABD; }
   </style>
 </head>
 <body>
@@ -57,8 +53,6 @@
         Swal.fire("⚠️ 請輸入病患 ID");
         return;
       }
-
-      // ✅ 跳轉 index.html 並傳遞 ID
       window.location.href = `/index?patient=${encodeURIComponent(id)}`;
     });
   </script>
