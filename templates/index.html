@@ -6,44 +6,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f0f0f0;
-      text-align: center;
-    }
-    #videoWrapper {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      margin: auto;
-      aspect-ratio: 3/4;
-      background: black;
-    }
-    video, #overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 10px;
-    }
-    canvas#preview {
-      display: none;
-    }
-    button {
-      margin: 1rem 0.5rem;
-      padding: 0.6rem 1.2rem;
-      font-size: 1.1rem;
-      border: none;
-      border-radius: 6px;
-      background: #4a90e2;
-      color: white;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #357ABD;
-    }
+    body { margin: 0; background: #f0f0f0; text-align: center; font-family: sans-serif; }
+    h2 { margin-top: 1rem; }
+    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; aspect-ratio: 3/4; background: black; }
+    video { width: 150%; transform: translateX(-25%); object-fit: cover; border-radius: 10px; }
+    canvas { position: absolute; top: 0; left: 0; width: 100%; height: auto; z-index: 10; pointer-events: none; }
+    button { margin: 1rem 0.5rem; padding: 0.6rem 1.2rem; font-size: 1.1rem; border: none; border-radius: 6px; background: #4a90e2; color: white; cursor: pointer; }
+    button:hover { background-color: #357ABD; }
   </style>
 </head>
 <body>
@@ -56,140 +25,76 @@
     <button id="captureBtn">拍照</button>
     <button id="historyBtn">查看歷史照片</button>
   </div>
-  <canvas id="preview"></canvas>
 
   <script>
     const video = document.getElementById("camera");
-    const overlay = document.getElementById("overlay");
+    const canvas = document.getElementById("overlay");
     const captureBtn = document.getElementById("captureBtn");
     const historyBtn = document.getElementById("historyBtn");
-    const preview = document.getElementById("preview");
     const patientId = new URLSearchParams(window.location.search).get("patient");
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } })
-    .then(stream => {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        video.play();
-        overlay.width = video.videoWidth;
-        overlay.height = video.videoHeight;
-        drawOverlay();
-      };
-    })
-    .catch(err => Swal.fire("❌ 相機啟動失敗", err.message, "error"));
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+      .then(stream => { video.srcObject = stream; video.onloadedmetadata = () => { video.play(); setTimeout(drawOverlay, 500); }; })
+      .catch(err => { Swal.fire("❌ 相機啟動失敗", err.message, "error"); });
 
     function drawOverlay() {
-      const ctx = overlay.getContext("2d");
-      const w = overlay.width;
-      const h = overlay.height;
-      ctx.clearRect(0, 0, w, h);
+      const vw = video.videoWidth, vh = video.videoHeight;
+      canvas.width = vw; canvas.height = vh;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, vw, vh);
 
-      const centerX = w / 2;
-      const centerY = h / 2;
-      const ow = w * 0.4;
-      const oh = h * 0.5;
-      const left = centerX - ow / 2;
-      const right = centerX + ow / 2;
-      const top = centerY - oh / 2;
-      const bottom = centerY + oh / 2;
+      const centerX = vw / 2, centerY = vh / 2, width = vw * 0.4, height = vh * 0.5;
+      const left = centerX - width / 2, right = centerX + width / 2, top = centerY - height / 2, bottom = centerY + height / 2;
 
       ctx.beginPath();
       ctx.moveTo(left, top + 20);
-      ctx.bezierCurveTo(left, centerY, centerX - ow * 0.2, bottom, centerX, bottom);
-      ctx.bezierCurveTo(centerX + ow * 0.2, bottom, right, centerY, right, top + 20);
+      ctx.bezierCurveTo(left, centerY, centerX - width * 0.2, bottom, centerX, bottom);
+      ctx.bezierCurveTo(centerX + width * 0.2, bottom, right, centerY, right, top + 20);
       ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
       ctx.closePath();
       ctx.strokeStyle = "#ff69b4";
       ctx.lineWidth = 3;
       ctx.stroke();
-
-      ctx.strokeStyle = "red";
-      ctx.lineWidth = 1;
-      for (let i = 1; i < 3; i++) {
-        ctx.beginPath();
-        ctx.moveTo(left + (ow / 3) * i, top + 20);
-        ctx.lineTo(left + (ow / 3) * i, bottom);
-        ctx.stroke();
-
-        ctx.beginPath();
-        ctx.moveTo(left, top + 20 + (oh / 3) * i);
-        ctx.lineTo(right, top + 20 + (oh / 3) * i);
-        ctx.stroke();
-      }
-    }
-
-    function getTongueRatio(canvas) {
-      const ctx = canvas.getContext("2d");
-      const w = canvas.width;
-      const h = canvas.height;
-      const data = ctx.getImageData(w * 0.33, h * 0.33, w * 0.33, h * 0.33).data;
-      let count = 0, total = data.length / 4;
-      for (let i = 0; i < data.length; i += 4) {
-        const r = data[i], g = data[i+1], b = data[i+2];
-        const brightness = (r + g + b) / 3;
-        if (r > 120 && g > 60 && g < 140 && b > 60 && b < 140 && brightness > 100 && brightness < 220) count++;
-      }
-      return count / total;
     }
 
     captureBtn.addEventListener("click", () => {
-      const w = video.videoWidth;
-      const h = video.videoHeight;
-      preview.width = w;
-      preview.height = h;
+      const snap = document.createElement("canvas");
+      snap.width = video.videoWidth;
+      snap.height = video.videoHeight;
+      const ctx = snap.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(canvas, 0, 0);
 
-      const ctx = preview.getContext("2d");
-      ctx.drawImage(video, 0, 0, w, h);
-      ctx.drawImage(overlay, 0, 0, w, h);
-
-      // ✅ 浮水印：拍照時間與病患 ID
-      ctx.fillStyle = "white";
-      ctx.font = "20px sans-serif";
-      ctx.textAlign = "right";
-      ctx.textBaseline = "bottom";
-      const now = new Date().toLocaleString("zh-TW", { hour12: false });
-      ctx.fillText("病患ID: " + patientId, w - 10, h - 30);
-      ctx.fillText("拍攝時間: " + now, w - 10, h - 5);
-
-      const tongueRatio = getTongueRatio(preview);
-      if (tongueRatio < 0.15) {
-        Swal.fire("⚠️ 舌頭比例過低", "請確保舌頭完整位於九宮格內再拍照", "warning");
-        return;
-      }
-
-      preview.toBlob(blob => {
+      snap.toBlob(blob => {
         const formData = new FormData();
         formData.append("image", blob);
         formData.append("patient_id", patientId);
-        Swal.fire({
-          title: "📸 拍照完成",
-          text: "是否上傳並查看？",
-          icon: "question",
-          showCancelButton: true,
-          confirmButtonText: "確認上傳",
-          cancelButtonText: "重新拍照"
-        }).then(result => {
-          if (result.isConfirmed) {
-            fetch("/upload", { method: "POST", body: formData })
-              .then(res => res.json())
-              .then(data => {
-                Swal.fire({
-                  title: "🧠 中醫判讀結果",
-                  html: `<b>舌苔主色：</b> ${data["舌苔主色"]}<br><b>推論：</b> ${data["中醫推論"]}<br><b>建議：</b> ${data["醫療建議"]}`,
-                  icon: "info",
-                  confirmButtonText: "查看歷史照片"
-                }).then(() => {
-                  window.location.href = "/history?patient=" + patientId;
-                });
-              })
-              .catch(err => Swal.fire("❌ 上傳失敗", err.message, "error"));
-          }
-        });
+
+        fetch("/upload", { method: "POST", body: formData })
+          .then(res => res.json())
+          .then(data => {
+            Swal.fire({
+              title: "🧠 中醫判讀結果",
+              html: `
+                <b>舌苔主色：</b> ${data["舌苔主色"]}<br>
+                <b>推論：</b> ${data["中醫推論"]}<br>
+                <b>建議：</b> ${data["醫療建議"]}<br><br>
+                <button id="viewHistoryBtn">查看歷史照片</button>
+              `,
+              showConfirmButton: false,
+              didOpen: () => {
+                document.getElementById("viewHistoryBtn").onclick = () => {
+                  window.location.href = `/history?patient=${patientId}`;
+                };
+              }
+            });
+          })
+          .catch(err => { Swal.fire("❌ 上傳失敗", err.message, "error"); });
       }, "image/jpeg");
     });
 
     historyBtn.addEventListener("click", () => {
-      window.location.href = "/history?patient=" + patientId;
+      window.location.href = `/history?patient=${patientId}`;
     });
   </script>
 </body>
