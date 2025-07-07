@@ -6,13 +6,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { margin: 0; background: #f0f0f0; text-align: center; font-family: sans-serif; }
-    h2 { margin-top: 1rem; }
-    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; aspect-ratio: 3/4; background: black; }
-    video { width: 150%; transform: translateX(-25%); object-fit: cover; border-radius: 10px; }
-    canvas { position: absolute; top: 0; left: 0; width: 100%; height: auto; z-index: 10; pointer-events: none; }
-    button { margin: 1rem 0.5rem; padding: 0.6rem 1.2rem; font-size: 1.1rem; border: none; border-radius: 6px; background: #4a90e2; color: white; cursor: pointer; }
-    button:hover { background-color: #357ABD; }
+    body { margin:0; font-family:sans-serif; text-align:center; background:#f0f0f0; }
+    #videoWrapper { position:relative; width:100%; max-width:500px; margin:auto; aspect-ratio:3/4; background:black; }
+    video { width:100%; object-fit:cover; }
+    canvas { position:absolute; top:0; left:0; width:100%; height:auto; pointer-events:none; }
+    button { margin:1rem; padding:0.6rem 1.2rem; font-size:1.1rem; border:none; border-radius:6px; background:#4a90e2; color:white; }
   </style>
 </head>
 <body>
@@ -28,68 +26,47 @@
 
   <script>
     const video = document.getElementById("camera");
-    const canvas = document.getElementById("overlay");
     const captureBtn = document.getElementById("captureBtn");
     const historyBtn = document.getElementById("historyBtn");
     const patientId = new URLSearchParams(window.location.search).get("patient");
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-      .then(stream => { video.srcObject = stream; video.onloadedmetadata = () => { video.play(); setTimeout(drawOverlay, 500); }; })
-      .catch(err => { Swal.fire("❌ 相機啟動失敗", err.message, "error"); });
-
-    function drawOverlay() {
-      const vw = video.videoWidth, vh = video.videoHeight;
-      canvas.width = vw; canvas.height = vh;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, vw, vh);
-
-      const centerX = vw / 2, centerY = vh / 2, width = vw * 0.4, height = vh * 0.5;
-      const left = centerX - width / 2, right = centerX + width / 2, top = centerY - height / 2, bottom = centerY + height / 2;
-
-      ctx.beginPath();
-      ctx.moveTo(left, top + 20);
-      ctx.bezierCurveTo(left, centerY, centerX - width * 0.2, bottom, centerX, bottom);
-      ctx.bezierCurveTo(centerX + width * 0.2, bottom, right, centerY, right, top + 20);
-      ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
-      ctx.closePath();
-      ctx.strokeStyle = "#ff69b4";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-    }
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } }
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => video.play();
+    })
+    .catch(err => {
+      Swal.fire("❌ 相機啟動失敗", err.message, "error");
+    });
 
     captureBtn.addEventListener("click", () => {
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth;
       snap.height = video.videoHeight;
-      const ctx = snap.getContext("2d");
-      ctx.drawImage(video, 0, 0);
-      ctx.drawImage(canvas, 0, 0);
+      const ctxSnap = snap.getContext("2d");
+
+      // 方案 B: 擷取與畫面一致
+      ctxSnap.drawImage(video, 0, 0, snap.width, snap.height);
 
       snap.toBlob(blob => {
         const formData = new FormData();
         formData.append("image", blob);
         formData.append("patient_id", patientId);
-
         fetch("/upload", { method: "POST", body: formData })
-          .then(res => res.json())
-          .then(data => {
+          .then(res=>res.json())
+          .then(data=>{
             Swal.fire({
-              title: "🧠 中醫判讀結果",
-              html: `
-                <b>舌苔主色：</b> ${data["舌苔主色"]}<br>
-                <b>推論：</b> ${data["中醫推論"]}<br>
-                <b>建議：</b> ${data["醫療建議"]}<br><br>
-                <button id="viewHistoryBtn">查看歷史照片</button>
-              `,
-              showConfirmButton: false,
-              didOpen: () => {
-                document.getElementById("viewHistoryBtn").onclick = () => {
-                  window.location.href = `/history?patient=${patientId}`;
-                };
-              }
-            });
+              title:"🧠 中醫判讀結果",
+              html:`<b>舌苔主色：</b> ${data["舌苔主色"]}<br><b>推論：</b> ${data["中醫推論"]}<br><b>建議：</b> ${data["醫療建議"]}`,
+              icon:"info",
+              confirmButtonText:"查看歷史照片"
+            }).then(()=>window.location.href=`/history?patient=${patientId}`);
           })
-          .catch(err => { Swal.fire("❌ 上傳失敗", err.message, "error"); });
+          .catch(err=>{
+            Swal.fire("❌ 上傳失敗", err.message, "error");
+          });
       }, "image/jpeg");
     });
 
