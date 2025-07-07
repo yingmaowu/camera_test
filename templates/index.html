@@ -6,68 +6,25 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body {
-      margin: 0;
-      font-family: sans-serif;
-      background: #f0f0f0;
-      text-align: center;
-    }
-
+    body { margin: 0; font-family: sans-serif; background: #f0f0f0; text-align: center; }
     h2 { margin-top: 1rem; }
-
-    #videoWrapper {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      margin: auto;
-      overflow: hidden;
-      aspect-ratio: 3/4;
-      background: black;
-    }
-
-    video {
-      width: 150%;
-      transform: translateX(-25%);
-      object-fit: cover;
-      border-radius: 10px;
-    }
-
-    #overlay {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      pointer-events: none;
-      z-index: 10;
-    }
-
-    button {
-      margin: 1rem 0.5rem;
-      padding: 0.6rem 1.2rem;
-      font-size: 1.1rem;
-      border: none;
-      border-radius: 6px;
-      background: #4a90e2;
-      color: white;
-      cursor: pointer;
-    }
-
+    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; aspect-ratio: 3/4; background: black; }
+    video { width: 150%; transform: translateX(-25%); object-fit: cover; border-radius: 10px; }
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; }
+    button { margin: 1rem 0.5rem; padding: 0.6rem 1.2rem; font-size: 1.1rem; border: none; border-radius: 6px; background: #4a90e2; color: white; cursor: pointer; }
     button:hover { background-color: #357ABD; }
   </style>
 </head>
 <body>
   <h2>舌苔辨識相機</h2>
-
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline muted></video>
     <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay">
   </div>
-
   <div>
     <button id="captureBtn">拍照</button>
     <button id="historyBtn">查看歷史照片</button>
+    <button onclick="history.back()">上一頁</button>
   </div>
 
   <script>
@@ -76,7 +33,6 @@
     const historyBtn = document.getElementById("historyBtn");
     const overlay = document.getElementById("overlay");
     const patientId = new URLSearchParams(window.location.search).get("patient");
-    let snapshotBlob = null;
 
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
       .then(stream => { video.srcObject = stream; video.onloadedmetadata = () => video.play(); })
@@ -90,38 +46,34 @@
       ctx.drawImage(overlay, 0, 0, snap.width, snap.height);
 
       snap.toBlob(blob => {
-        snapshotBlob = blob;
-        Swal.fire({
-          title: "📸 拍照完成",
-          text: "是否上傳？",
-          icon: "question",
-          showCancelButton: true,
-          confirmButtonText: "確認上傳",
-          cancelButtonText: "重新拍照"
-        }).then(result => {
-          if (result.isConfirmed) {
-            const formData = new FormData();
-            formData.append("image", snapshotBlob);
-            formData.append("patient_id", patientId);
-            fetch("/upload", { method: "POST", body: formData })
-              .then(res => res.json())
-              .then(data => {
-                Swal.fire({
-                  title: "✅ 上傳完成",
-                  text: "分析已完成，點擊查看歷史紀錄",
-                  icon: "success",
-                  confirmButtonText: "查看歷史照片"
-                }).then(() => {
-                  window.location.href = `/history?patient=${patientId}`;
-                });
-              })
-              .catch(err => {
-                Swal.fire("❌ 上傳失敗", err.message, "error");
-              });
-          } else {
-            snapshotBlob = null;
-          }
-        });
+        const formData = new FormData();
+        formData.append("image", blob);
+        formData.append("patient_id", patientId);
+        fetch("/upload", { method: "POST", body: formData })
+          .then(res => res.json())
+          .then(data => {
+            let table = "<table border='1'><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
+            Object.keys(data["五區分析"]).forEach(region => {
+              const r = data["五區分析"][region];
+              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
+            });
+            table += "</table>";
+
+            Swal.fire({
+              title: "🧠 判讀結果",
+              html: `
+                <b>舌苔主色：</b> ${data["舌苔主色"]}<br><br>
+                ${table}
+              `,
+              icon: "info",
+              confirmButtonText: "查看歷史照片"
+            }).then(() => {
+              window.location.href = `/history?patient=${patientId}`;
+            });
+          })
+          .catch(err => {
+            Swal.fire("❌ 上傳失敗", err.message, "error");
+          });
       }, "image/jpeg");
     });
 
