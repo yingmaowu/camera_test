@@ -123,15 +123,7 @@ def delete_record():
     except Exception as e:
         return jsonify({"error": "刪除失敗", "detail": str(e)}), 500
 
-@app.route("/patients", methods=["GET"])
-def list_patients():
-    try:
-        patients = records_collection.distinct("patient_id")
-        return jsonify(sorted(patients))
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("✅ Flask app running with MongoDB, Cloudinary, and tongue region analysis integration.")
+    print("✅ Flask app running with MongoDB, Cloudinary, and fixed region analysis integration.")
     app.run(host="0.0.0.0", port=port)
