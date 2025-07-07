@@ -8,7 +8,7 @@ import cloudinary.uploader
 import tempfile
 import io
 from bson import ObjectId
-from color_analysis import analyze_image_color
+from color_analysis import analyze_image_color, analyze_five_regions
 
 load_dotenv()
 
@@ -61,6 +61,7 @@ def upload_image():
             tmp.write(image_bytes)
             tmp.flush()
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
+            five_regions = analyze_five_regions(tmp.name)
             os.remove(tmp.name)
 
         record = {
@@ -70,6 +71,7 @@ def upload_image():
             "comment": comment,
             "advice": advice,
             "rgb": rgb,
+            "five_regions": five_regions,
             "timestamp": datetime.datetime.utcnow()
         }
         records_collection.insert_one(record)
@@ -80,7 +82,8 @@ def upload_image():
             "舌苔主色": main_color,
             "中醫推論": comment,
             "醫療建議": advice,
-            "主色RGB": rgb
+            "主色RGB": rgb,
+            "五區分析": five_regions
         })
 
     except Exception as e:
