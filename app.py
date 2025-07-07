@@ -59,10 +59,17 @@ def upload_image():
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
+
+            # 主色分析
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            five_regions = analyze_five_regions(tmp.name)  # 🔍 五區分析
+
+            # 🔍 五區分析
+            five_regions = analyze_five_regions(tmp.name)
+            print("✅ five_regions debug:", five_regions)
+
             os.remove(tmp.name)
 
+        # 儲存至 MongoDB
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
@@ -76,13 +83,14 @@ def upload_image():
         records_collection.insert_one(record)
         print(f"✅ 已儲存影像：{image_url}")
 
+        # 回傳結果
         return jsonify({
             "image_url": image_url,
             "舌苔主色": main_color,
             "中醫推論": comment,
             "醫療建議": advice,
             "主色RGB": rgb,
-            "五區分析": five_regions  # 🔍 回傳
+            "五區分析": five_regions
         })
 
     except Exception as e:
