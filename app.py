@@ -60,7 +60,7 @@ def upload_image():
             tmp.write(image_bytes)
             tmp.flush()
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            five_regions = analyze_five_regions(tmp.name)
+            five_regions = analyze_five_regions(tmp.name)  # 🔍 五區分析
             os.remove(tmp.name)
 
         record = {
