@@ -8,17 +8,17 @@ import cloudinary.uploader
 import tempfile
 import io
 from bson import ObjectId
-from color_analysis import analyze_image_color, analyze_five_regions, analyze_tongue_regions
+from color_analysis import analyze_image_color, analyze_tongue_regions
 
 load_dotenv()
 app = Flask(__name__)
 
-# MongoDB Atlas
+# MongoDB Atlas 連線
 mongo_client = MongoClient(os.environ.get("MONGO_URI"))
 mongo_db = mongo_client["tongueDB"]
 records_collection = mongo_db["records"]
 
-# Cloudinary
+# Cloudinary 設定
 cloudinary.config(
     cloud_name=os.environ.get("CLOUD_NAME"),
     api_key=os.environ.get("CLOUD_API_KEY"),
@@ -53,11 +53,11 @@ def upload_image():
         image_bytes = image.read()
         image_stream = io.BytesIO(image_bytes)
 
-        # 上傳 Cloudinary
+        # 上傳至 Cloudinary
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # 舌苔主色 + 五區分析
+        # 進行舌苔主色與五區分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
@@ -76,8 +76,9 @@ def upload_image():
             "five_regions": five_regions,
             "timestamp": datetime.datetime.utcnow()
         }
-        inserted = records_collection.insert_one(record)
-        print(f"✅ 已儲存影像：{image_url}，記錄 ID = {inserted.inserted_id}")
+        records_collection.insert_one(record)
+
+        print(f"✅ 已儲存影像：{image_url}")
 
         return jsonify({
             "image_url": image_url,
@@ -85,8 +86,7 @@ def upload_image():
             "中醫推論": comment,
             "醫療建議": advice,
             "主色RGB": rgb,
-            "五區分析": five_regions,
-            "patient_id": patient_id
+            "五區分析": five_regions
         })
 
     except Exception as e:
@@ -123,6 +123,15 @@ def delete_record():
     except Exception as e:
         return jsonify({"error": "刪除失敗", "detail": str(e)}), 500
 
+@app.route("/patients", methods=["GET"])
+def list_patients():
+    try:
+        patients = records_collection.distinct("patient_id")
+        return jsonify(sorted(patients))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
+    print("✅ Flask app running with MongoDB, Cloudinary, and tongue region analysis integration.")
     app.run(host="0.0.0.0", port=port)
