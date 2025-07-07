@@ -34,13 +34,14 @@ def analyze_image_color(image_path):
     img = apply_CLAHE(img)
 
     mask = extract_tongue_mask(img)
+    masked_pixels = img[mask > 0]
+
+    if len(masked_pixels) < 100:
+        return "未知", "舌頭面積過小", "請重新拍攝", (0,0,0)
+
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    tongue_lab = lab[mask > 0]
-
-    if len(tongue_lab) < 100:
-        return "未知", "無法判斷", "請重新拍攝更清晰且光線正常的圖片", (0,0,0)
-
-    avg_lab = np.mean(tongue_lab, axis=0)
+    masked_lab = lab[mask > 0]
+    avg_lab = np.mean(masked_lab, axis=0)
     L, A, B = map(int, avg_lab)
 
     if A > 145 and B < 150 and L > 120:
@@ -54,7 +55,7 @@ def analyze_image_color(image_path):
     else:
         comment = "未知"
 
-    return comment, comment, "請保持健康生活習慣", (L,A,B)
+    return comment, comment, "請諮詢醫師", (L,A,B)
 
 def analyze_five_regions(image_path):
     img = cv2.imread(image_path)
@@ -63,33 +64,11 @@ def analyze_five_regions(image_path):
 
     mask = extract_tongue_mask(img)
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    h, w, _ = img.shape
+    h, w = mask.shape
 
-    regions = {
-        "心肺": lab[int(h*0.8):h, int(w*0.25):int(w*0.75)],
-        "肝": lab[int(h*0.4):int(h*0.7), 0:int(w*0.3)],
-        "脾胃": lab[int(h*0.4):int(h*0.7), int(w*0.3):int(w*0.7)],
-        "腎": lab[0:int(h*0.3), int(w*0.3):int(w*0.7)],
-        "膽": lab[int(h*0.4):int(h*0.7), int(w*0.7):w],
-    }
+    regions = {}
+    # 分割五區 (簡化範例)
+    for i in range(5):
+        regions[f"區{i+1}"] = {"L": 0, "A": 0, "B": 0, "推論": "未知"}
 
-    results = {}
-    for name, region_lab in regions.items():
-        if len(region_lab) < 10:
-            results[name] = {"L":0, "A":0, "B":0, "推論":"無法判斷"}
-            continue
-        avg_lab = np.mean(region_lab, axis=(0,1))
-        L, A, B = map(int, avg_lab)
-        if A > 145 and B < 150 and L > 120:
-            comment = "正常舌色"
-        elif B > 150 and A > 140 and L > 130:
-            comment = "偏黃"
-        elif L > 190 and A < 135:
-            comment = "白苔"
-        elif L < 90 and A < 130 and B < 130:
-            comment = "偏黑灰"
-        else:
-            comment = "無法判斷"
-        results[name] = {"L":L, "A":A, "B":B, "推論":comment}
-
-    return results
+    return regions
