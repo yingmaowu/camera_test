@@ -1,10 +1,40 @@
 import cv2
 import numpy as np
-import os
+
+# 區域對應中文名稱
+region_mapping = {
+    "heart": "心",
+    "liver": "肝",
+    "spleen": "脾",
+    "lung": "肺",
+    "kidney": "腎"
+}
+
+# 五區中醫理論
+theory_dict = {
+    "heart": "心主血脈，舌尖對應心火",
+    "liver": "肝藏血，舌邊對應肝膽",
+    "spleen": "脾主運化，舌中對應脾胃",
+    "lung": "肺朝百脈，舌尖側對應肺",
+    "kidney": "腎藏精，舌根對應腎"
+}
+
+def apply_grayworld(image):
+    b, g, r = cv2.split(image)
+    avg_b, avg_g, avg_r = np.mean(b), np.mean(g), np.mean(r)
+    avg_gray = (avg_b + avg_g + avg_r) / 3
+    b = np.clip(b * (avg_gray / avg_b), 0, 255).astype(np.uint8)
+    g = np.clip(g * (avg_gray / avg_g), 0, 255).astype(np.uint8)
+    r = np.clip(r * (avg_gray / avg_r), 0, 255).astype(np.uint8)
+    return cv2.merge([b, g, r])
 
 def analyze_image_color(image_path):
     img = cv2.imread(image_path)
-    avg_rgb = np.mean(img.reshape(-1,3), axis=0).astype(int).tolist()
+    if img is None:
+        raise FileNotFoundError(f"找不到圖片: {image_path}")
+
+    img = apply_grayworld(img)
+    avg_rgb = np.mean(img.reshape(-1, 3), axis=0).astype(int).tolist()
     r, g, b = avg_rgb
 
     if r > 150 and g < 100:
@@ -24,32 +54,29 @@ def analyze_image_color(image_path):
 
 def analyze_tongue_regions(image_path):
     img = cv2.imread(image_path)
+    if img is None:
+        raise FileNotFoundError(f"找不到圖片: {image_path}")
+
     h, w, _ = img.shape
 
-    # 固定 overlay 座標切割 (五區)
-    regions = {
-        "heart": img[h//5:2*h//5, w//3:2*w//3],
-        "lung": img[:h//5, w//3:2*w//3],
-        "liver": img[2*h//5:3*h//5, :w//3],
-        "spleen": img[2*h//5:3*h//5, 2*w//3:],
-        "kidney": img[4*h//5:, w//3:2*w//3]
+    # 固定 overlay 座標切割 (依 overlay.png 設計)
+    rois = {
+        "heart": img[0:int(h*0.2), int(w*0.35):int(w*0.65)],
+        "liver": img[int(h*0.2):int(h*0.5), 0:int(w*0.3)],
+        "spleen": img[int(h*0.2):int(h*0.5), int(w*0.7):w],
+        "lung": img[int(h*0.5):int(h*0.7), int(w*0.2):int(w*0.8)],
+        "kidney": img[int(h*0.7):h, int(w*0.3):int(w*0.7)]
     }
 
-    results = {}
-    for name, roi in regions.items():
-        avg_lab = cv2.cvtColor(roi, cv2.COLOR_BGR2LAB).reshape(-1,3).mean(axis=0).tolist()
-        diagnosis = "正常"
-        results[name] = {"name": name, "avg_lab": avg_lab, "diagnosis": diagnosis}
+    result = {}
+    for region_id, roi in rois.items():
+        roi_lab = cv2.cvtColor(roi, cv2.COLOR_BGR2LAB)
+        avg_lab = np.mean(roi_lab.reshape(-1, 3), axis=0).tolist()
 
-    # 產生 processed 標記圖
-    overlay = img.copy()
-    for name, roi in regions.items():
-        x1, y1 = w//3, h//5
-        x2, y2 = 2*w//3, 2*h//5
-        cv2.rectangle(overlay, (x1,y1), (x2,y2), (0,0,255), 2)
+        result[region_id] = {
+            "name": region_mapping[region_id],
+            "avg_lab": [round(v) for v in avg_lab],
+            "diagnosis": theory_dict[region_id]
+        }
 
-    processed_path = f"static/processed/{os.path.basename(image_path)}"
-    os.makedirs(os.path.dirname(processed_path), exist_ok=True)
-    cv2.imwrite(processed_path, overlay)
-
-    return results, processed_path
+    return result
