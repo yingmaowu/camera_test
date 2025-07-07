@@ -8,8 +8,7 @@
   <style>
     body { font-family: 'Segoe UI', sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 2rem; }
     h2 { margin-bottom: 1rem; }
-    .button-row { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
-    button { font-size: 1rem; padding: 0.5rem 1.2rem; border: none; border-radius: 8px; background-color: #4a90e2; color: white; cursor: pointer; }
+    button { font-size: 1rem; padding: 0.5rem 1.2rem; border: none; border-radius: 8px; background-color: #4a90e2; color: white; cursor: pointer; margin: 0.5rem; }
     button:hover { background-color: #357ABD; }
     #photoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 20px; max-width: 1000px; margin: 2rem auto; }
     .photo-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
@@ -22,25 +21,12 @@
 </head>
 <body>
   <h2>📁 歷史照片紀錄</h2>
-  <div class="button-row">
-    <button onclick="window.location.href='/'">回病患 ID 輸入</button>
-    <button id="backIndex">回拍照頁</button>
-  </div>
+  <button onclick="history.back()">上一頁</button>
   <div id="photoGrid"></div>
 
   <script>
     const photoGrid = document.getElementById("photoGrid");
-    const urlParams = new URLSearchParams(window.location.search);
-    const patientId = urlParams.get("patient") || "";
-
-    document.getElementById("backIndex").onclick = () => {
-      window.location.href = `/index?patient=${patientId}`;
-    };
-
-    function formatTime(iso) {
-      const d = new Date(iso);
-      return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-    }
+    const patientId = new URLSearchParams(window.location.search).get("patient") || "";
 
     fetch(`/history_data?patient=${patientId}`)
       .then(res => res.json())
@@ -56,69 +42,28 @@
           img.src = record.image_url;
           const time = document.createElement("div");
           time.className = "timestamp";
-          time.textContent = formatTime(record.timestamp);
+          time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
           card.appendChild(img);
           card.appendChild(time);
-
           card.onclick = () => {
-            let tableHtml = "<table><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
-            if (record.five_regions) {
-              Object.keys(record.five_regions).forEach(region => {
-                const r = record.five_regions[region];
-                tableHtml += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
-              });
-            } else {
-              tableHtml += "<tr><td colspan='4'>無資料</td></tr>";
-            }
-            tableHtml += "</table>";
+            let table = "<table><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
+            Object.keys(record.five_regions).forEach(region => {
+              const r = record.five_regions[region];
+              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
+            });
+            table += "</table>";
 
             Swal.fire({
-              title: "🧠 五區診斷結果",
+              title: "🧠 判讀結果",
               html: `
                 <b>舌苔主色：</b> ${record.main_color}<br><br>
-                ${tableHtml}
-                <br>
-                <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;">刪除這筆紀錄</button>
+                ${table}
               `,
-              showConfirmButton: false,
-              didOpen: () => {
-                document.getElementById("deleteBtn").onclick = () => {
-                  Swal.fire({
-                    title: "確定要刪除？",
-                    text: "這筆資料將無法復原",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "刪除",
-                    cancelButtonText: "取消"
-                  }).then(result => {
-                    if (result.isConfirmed) {
-                      fetch("/delete_record", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: record._id })
-                      })
-                        .then(res => res.json())
-                        .then(resp => {
-                          if (resp.success) {
-                            Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
-                          } else {
-                            Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
-                          }
-                        })
-                        .catch(err => {
-                          Swal.fire("❌ 刪除失敗", err.message, "error");
-                        });
-                    }
-                  });
-                };
-              }
+              confirmButtonText: "關閉"
             });
           };
           photoGrid.appendChild(card);
         });
-      })
-      .catch(err => {
-        photoGrid.innerHTML = `<p>讀取失敗：${err.message}</p>`;
       });
   </script>
 </body>
