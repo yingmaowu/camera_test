@@ -1,12 +1,9 @@
 from flask import Flask, render_template, request, jsonify
-import os
-import datetime
+import os, datetime, tempfile, io
 from dotenv import load_dotenv
 from pymongo import MongoClient
 import cloudinary
 import cloudinary.uploader
-import tempfile
-import io
 from bson import ObjectId
 from color_analysis import analyze_image_color, analyze_five_regions
 
@@ -26,16 +23,13 @@ cloudinary.config(
 )
 
 @app.route("/")
-def root():
-    return render_template("id.html")
+def root(): return render_template("id.html")
 
 @app.route("/index")
-def index():
-    return render_template("index.html")
+def index(): return render_template("index.html")
 
 @app.route("/history")
-def history():
-    return render_template("history.html")
+def history(): return render_template("history.html")
 
 @app.route("/upload", methods=["POST"])
 def upload_image():
@@ -47,29 +41,21 @@ def upload_image():
     if not patient_id:
         return "Missing patient ID", 400
 
-    print(f"📸 接收到來自 {patient_id} 的圖片")
+    print(f"📸 接收到 {patient_id} 圖片", flush=True)
 
     try:
         image_bytes = image.read()
         image_stream = io.BytesIO(image_bytes)
-
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
-
-            # 主色分析
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-
-            # 🔍 五區分析
             five_regions = analyze_five_regions(tmp.name)
-            print("✅ five_regions debug:", five_regions)
-
             os.remove(tmp.name)
 
-        # 儲存至 MongoDB
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
@@ -81,9 +67,8 @@ def upload_image():
             "timestamp": datetime.datetime.utcnow()
         }
         records_collection.insert_one(record)
-        print(f"✅ 已儲存影像：{image_url}")
+        print(f"✅ 已儲存影像：{image_url}", flush=True)
 
-        # 回傳結果
         return jsonify({
             "image_url": image_url,
             "舌苔主色": main_color,
@@ -94,7 +79,7 @@ def upload_image():
         })
 
     except Exception as e:
-        print(f"❌ 上傳處理失敗：{e}")
+        print(f"❌ 上傳處理失敗：{e}", flush=True)
         return jsonify({"error": "上傳失敗", "detail": str(e)}), 500
 
 @app.route("/history_data", methods=["GET"])
