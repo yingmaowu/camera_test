@@ -6,49 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f0f0;
-      text-align: center;
-      margin: 0;
-      padding: 2rem;
-    }
+    body { font-family: 'Segoe UI', sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 2rem; }
     h2 { margin-bottom: 1rem; }
-    .button-row {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    button {
-      font-size: 1rem;
-      padding: 0.5rem 1.2rem;
-      border: none;
-      border-radius: 8px;
-      background-color: #4a90e2;
-      color: white;
-      cursor: pointer;
-    }
+    .button-row { display: flex; justify-content: center; gap: 1rem; flex-wrap: wrap; }
+    button { font-size: 1rem; padding: 0.5rem 1.2rem; border: none; border-radius: 8px; background-color: #4a90e2; color: white; cursor: pointer; }
     button:hover { background-color: #357ABD; }
-    #photoGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 20px;
-      max-width: 1000px;
-      margin: 2rem auto;
-    }
-    .photo-card {
-      background: #fff;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
-    }
-    .photo-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.2);
-    }
+    #photoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 20px; max-width: 1000px; margin: 2rem auto; }
+    .photo-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
+    .photo-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
     .photo-card img { width: 100%; display: block; object-fit: cover; }
     .timestamp { padding: 0.4rem; font-size: 0.9rem; color: #666; }
     table { margin: auto; border-collapse: collapse; }
@@ -96,28 +61,22 @@
           card.appendChild(time);
 
           card.onclick = () => {
-            let fiveRegionsTable = "<table><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>診斷</th><th>建議</th></tr>";
-            if (record.five_regions && !record.five_regions.error) {
+            let tableHtml = "<table><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
+            if (record.five_regions) {
               Object.keys(record.five_regions).forEach(region => {
                 const r = record.five_regions[region];
-                const avg_lab = r.avg_lab.map(v => Math.round(v));
-                fiveRegionsTable += `<tr><td>${region}</td><td>${avg_lab[0]}</td><td>${avg_lab[1]}</td><td>${avg_lab[2]}</td><td>${r.診斷}</td><td>${r.建議}</td></tr>`;
+                tableHtml += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
               });
             } else {
-              fiveRegionsTable += "<tr><td colspan='6'>無法判斷</td></tr>";
+              tableHtml += "<tr><td colspan='4'>無資料</td></tr>";
             }
-            fiveRegionsTable += "</table>";
-
-            const processedImg = record.processed_url ? `<br><strong>🔍 標記圖：</strong><br><img src="${record.processed_url}" style="max-width:100%;border-radius:10px;">` : "";
+            tableHtml += "</table>";
 
             Swal.fire({
-              title: "🧠 中醫推論",
+              title: "🧠 五區診斷結果",
               html: `
-                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
-                <strong>推論內容：</strong><br>${record.comment}<br><br>
-                <strong>醫療建議：</strong><br>${record.advice}<br><br>
-                ${fiveRegionsTable}
-                ${processedImg}
+                <b>舌苔主色：</b> ${record.main_color}<br><br>
+                ${tableHtml}
                 <br>
                 <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;cursor:pointer;">刪除這筆紀錄</button>
               `,
