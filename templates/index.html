@@ -34,10 +34,8 @@
 
     #overlay {
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
       object-fit: contain;
       pointer-events: none;
       z-index: 10;
@@ -62,7 +60,7 @@
 
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline muted></video>
-    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay">
+    <img id="overlay" src="/static/overlay.png" alt="overlay">
   </div>
 
   <div>
@@ -78,20 +76,37 @@
     const patientId = new URLSearchParams(window.location.search).get("patient");
     let snapshotBlob = null;
 
-    if (!patientId) {
-      Swal.fire("⚠️ 無病患 ID", "請重新輸入病患 ID", "warning")
-        .then(() => window.location.href = "/");
-    }
-
     navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
       .then(stream => { video.srcObject = stream; video.onloadedmetadata = () => video.play(); })
       .catch(err => { Swal.fire("❌ 相機啟動失敗", err.message, "error"); });
+
+    function isTongueLikeColor(r, g, b) {
+      const brightness = (r + g + b) / 3;
+      return (r > 120 && g > 60 && g < 140 && b > 60 && b < 140 && brightness > 100 && brightness < 220);
+    }
+
+    function getTongueRatio(canvas) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width, h = canvas.height;
+      const data = ctx.getImageData(w * 0.33, h * 0.33, w * 0.33, h * 0.33).data;
+      let count = 0, total = data.length / 4;
+      for (let i = 0; i < data.length; i += 4) {
+        if (isTongueLikeColor(data[i], data[i+1], data[i+2])) count++;
+      }
+      return count / total;
+    }
 
     captureBtn.addEventListener("click", () => {
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth; snap.height = video.videoHeight;
       const ctx = snap.getContext("2d");
       ctx.drawImage(video, 0, 0, snap.width, snap.height);
+
+      const tongueRatio = getTongueRatio(snap);
+      if (tongueRatio < 0.15) {
+        Swal.fire("⚠️ 舌頭比例過低", "請確保舌頭完整位於輪廓內再拍照", "warning");
+        snapshotBlob = null; return;
+      }
 
       snap.toBlob(blob => {
         snapshotBlob = blob;
@@ -110,22 +125,15 @@
             fetch("/upload", { method: "POST", body: formData })
               .then(res => res.json())
               .then(data => {
-                let fiveRegionsTable = "<table border='1'><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
+                let fiveRegionsTable = "<table border='1'><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>診斷</th><th>建議</th></tr>";
                 if (data["五區分析"] && !data["五區分析"].error) {
                   Object.keys(data["五區分析"]).forEach(region => {
                     const r = data["五區分析"][region];
-                    fiveRegionsTable += `<tr>
-                      <td>${r["區域"]}</td>
-                      <td>${r["avg_lab"][0]}</td>
-                      <td>${r["avg_lab"][1]}</td>
-                      <td>${r["avg_lab"][2]}</td>
-                      <td>${r["診斷"]}</td>
-                      <td>${r["理論"]}</td>
-                      <td>${r["建議"]}</td>
-                    </tr>`;
+                    const avg_lab = r.avg_lab.map(v => Math.round(v));
+                    fiveRegionsTable += `<tr><td>${region}</td><td>${avg_lab[0]}</td><td>${avg_lab[1]}</td><td>${avg_lab[2]}</td><td>${r.診斷}</td><td>${r.建議}</td></tr>`;
                   });
                 } else {
-                  fiveRegionsTable += "<tr><td colspan='7'>無法判斷</td></tr>";
+                  fiveRegionsTable += "<tr><td colspan='6'>無法判斷</td></tr>";
                 }
                 fiveRegionsTable += "</table>";
 
