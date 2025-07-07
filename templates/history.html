@@ -5,37 +5,45 @@
   <title>歷史照片紀錄</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { font-family: sans-serif; padding: 2rem; background: #f0f0f0; text-align: center; }
-    .photo { width: 150px; margin: 1rem; border: 2px solid #ccc; border-radius: 10px; }
-    table { margin: auto; border-collapse: collapse; margin-top: 1rem; }
-    td, th { border: 1px solid #666; padding: 0.5rem; }
+    body { font-family: sans-serif; text-align: center; }
+    img { width: 200px; margin: 1rem; border: 1px solid #ccc; }
+    table { border-collapse: collapse; margin: auto; }
+    td, th { border: 1px solid #999; padding: 0.5rem; }
   </style>
 </head>
 <body>
   <h2>📁 歷史照片紀錄</h2>
   <div id="photos"></div>
+
   <script>
-    const p = new URLSearchParams(location.search).get("patient");
-    fetch(`/history_data?patient=${p}`).then(r=>r.json()).then(d=>{
-      if (!d.length) return document.body.innerHTML += "<p>尚無紀錄</p>";
-      d.forEach(r=>{
-        const img = document.createElement("img");
-        img.src = r.image_url; img.className = "photo";
-        img.onclick = () => {
-          Swal.fire({
-            html: `<b>主色:</b> ${r.main_color}<br><b>推論:</b> ${r.comment}<br>
-              <b>建議:</b> ${r.advice}<br><hr>
-              <b>Debug:</b> ${JSON.stringify(r.debug)}<br>
-              <table><tr><th>區</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>${
-                Object.entries(r.five_regions || {}).map(([k,v])=>
-                  `<tr><td>${k}</td><td>${v.L||"-"}</td><td>${v.A||"-"}</td><td>${v.B||"-"}</td><td>${v.推論||"-"}</td></tr>`
-                ).join("")
-              }</table>`
-          })
-        }
-        document.getElementById("photos").append(img);
-      })
-    })
+    fetch('/history_data?patient=' + new URLSearchParams(window.location.search).get('patient'))
+      .then(res => res.json())
+      .then(data => {
+        const photosDiv = document.getElementById('photos');
+        data.forEach(record => {
+          const img = document.createElement('img');
+          img.src = record.image_url;
+          photosDiv.appendChild(img);
+
+          const table = document.createElement('table');
+          table.innerHTML = `
+            <tr><th>主色</th><td>${record.main_color}</td></tr>
+            <tr><th>RGB</th><td>${record.rgb}</td></tr>
+            <tr><th>推論</th><td>${record.comment}</td></tr>
+            <tr><th>醫療建議</th><td>${record.advice}</td></tr>
+          `;
+          photosDiv.appendChild(table);
+
+          if (record.five_regions) {
+            const five = document.createElement('table');
+            five.innerHTML = `<tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>`;
+            for (const [k,v] of Object.entries(record.five_regions)) {
+              five.innerHTML += `<tr><td>${k}</td><td>${v.L}</td><td>${v.A}</td><td>${v.B}</td><td>${v.推論}</td></tr>`;
+            }
+            photosDiv.appendChild(five);
+          }
+        });
+      });
   </script>
 </body>
 </html>
