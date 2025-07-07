@@ -1,25 +1,28 @@
 from flask import Flask, render_template, request, jsonify
-import os, datetime, tempfile, io
+import os
+import datetime
 from dotenv import load_dotenv
 from pymongo import MongoClient
 import cloudinary
 import cloudinary.uploader
+import tempfile
+import io
 from bson import ObjectId
 from color_analysis import analyze_image_color, analyze_five_regions
 
 load_dotenv()
 app = Flask(__name__)
 
-# ✅ MongoDB Atlas 連線
+# MongoDB Atlas 連線
 mongo_client = MongoClient(os.environ.get("MONGO_URI"))
 mongo_db = mongo_client["tongueDB"]
 records_collection = mongo_db["records"]
 
-# ✅ Cloudinary 設定
+# Cloudinary 設定
 cloudinary.config(
-    cloud_name = os.environ.get("CLOUD_NAME"),
-    api_key = os.environ.get("CLOUD_API_KEY"),
-    api_secret = os.environ.get("CLOUD_API_SECRET")
+    cloud_name=os.environ.get("CLOUD_NAME"),
+    api_key=os.environ.get("CLOUD_API_KEY"),
+    api_secret=os.environ.get("CLOUD_API_SECRET")
 )
 
 @app.route("/")
@@ -50,11 +53,11 @@ def upload_image():
         image_bytes = image.read()
         image_stream = io.BytesIO(image_bytes)
 
-        # ✅ 上傳至 Cloudinary
+        # 上傳至 Cloudinary
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # ✅ 分析主色與五區
+        # 進行分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
@@ -62,7 +65,7 @@ def upload_image():
             five_regions = analyze_five_regions(tmp.name)
             os.remove(tmp.name)
 
-        # ✅ 建立紀錄
+        # 寫入 MongoDB
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
@@ -74,9 +77,9 @@ def upload_image():
             "timestamp": datetime.datetime.utcnow()
         }
         records_collection.insert_one(record)
+
         print(f"✅ 已儲存影像：{image_url}")
 
-        # ✅ 回傳結果
         return jsonify({
             "image_url": image_url,
             "舌苔主色": main_color,
@@ -130,5 +133,5 @@ def list_patients():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("✅ MongoDB 連線成功")
+    print("✅ Flask app running with MongoDB and Cloudinary integration.")
     app.run(host="0.0.0.0", port=port)
