@@ -47,28 +47,34 @@ def upload_image():
     if not patient_id:
         return "Missing patient ID", 400
 
-    print(f"📸 接收到來自 {patient_id} 的圖片")
-
     try:
         image_bytes = image.read()
         image_stream = io.BytesIO(image_bytes)
 
-        # 上傳至 Cloudinary
+        # 上傳原始圖片至 Cloudinary
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # 進行舌苔主色與五區分析
+        # 暫存後進行分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
+
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            five_regions = analyze_tongue_regions(tmp.name)
-            os.remove(tmp.name)
+            five_regions, processed_path = analyze_tongue_regions(tmp.name)
+
+        # 上傳 processed 標記圖
+        processed_url = None
+        if processed_path and os.path.exists(processed_path):
+            processed_result = cloudinary.uploader.upload(processed_path, folder=f"tongue/{patient_id}/processed/")
+            processed_url = processed_result["secure_url"]
+            os.remove(processed_path)
 
         # 寫入 MongoDB
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
+            "processed_url": processed_url,
             "main_color": main_color,
             "comment": comment,
             "advice": advice,
@@ -78,10 +84,9 @@ def upload_image():
         }
         records_collection.insert_one(record)
 
-        print(f"✅ 已儲存影像：{image_url}")
-
         return jsonify({
             "image_url": image_url,
+            "processed_url": processed_url,
             "舌苔主色": main_color,
             "中醫推論": comment,
             "醫療建議": advice,
@@ -90,7 +95,6 @@ def upload_image():
         })
 
     except Exception as e:
-        print(f"❌ 上傳處理失敗：{e}")
         return jsonify({"error": "上傳失敗", "detail": str(e)}), 500
 
 @app.route("/history_data", methods=["GET"])
@@ -125,5 +129,4 @@ def delete_record():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("✅ Flask app running with MongoDB, Cloudinary, and fixed region analysis integration.")
     app.run(host="0.0.0.0", port=port)
