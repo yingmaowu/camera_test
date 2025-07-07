@@ -1,3 +1,5 @@
+# app.py
+
 from flask import Flask, render_template, request, jsonify
 import os
 import datetime
@@ -8,7 +10,7 @@ import cloudinary.uploader
 import tempfile
 import io
 from bson import ObjectId
-from color_analysis import analyze_image_color, analyze_five_regions
+from color_analysis import analyze_image_color, analyze_tongue_regions
 
 load_dotenv()
 app = Flask(__name__)
@@ -57,12 +59,12 @@ def upload_image():
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # 進行分析
+        # 進行舌苔主色與五區分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            five_regions = analyze_five_regions(tmp.name)
+            five_regions = analyze_tongue_regions(tmp.name)
             os.remove(tmp.name)
 
         # 寫入 MongoDB
@@ -133,5 +135,5 @@ def list_patients():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("✅ Flask app running with MongoDB and Cloudinary integration.")
+    print("✅ Flask app running with MongoDB, Cloudinary, and tongue region analysis integration.")
     app.run(host="0.0.0.0", port=port)
