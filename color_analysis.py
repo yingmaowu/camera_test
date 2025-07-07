@@ -34,14 +34,13 @@ def analyze_image_color(image_path):
     img = apply_CLAHE(img)
 
     mask = extract_tongue_mask(img)
-    masked_pixels = img[mask > 0]
-
-    if len(masked_pixels) < 100:
-        return "未知", "舌頭面積過小", "請重新拍攝", (0,0,0)
+    if np.sum(mask > 0) < 100:
+        return "未知", "舌頭面積過小", "請重新拍照", (0,0,0)
 
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    masked_lab = lab[mask > 0]
-    avg_lab = np.mean(masked_lab, axis=0)
+    tongue_lab = lab[mask > 0]
+
+    avg_lab = np.mean(tongue_lab, axis=0)
     L, A, B = map(int, avg_lab)
 
     if A > 145 and B < 150 and L > 120:
@@ -55,7 +54,7 @@ def analyze_image_color(image_path):
     else:
         comment = "未知"
 
-    return comment, comment, "請諮詢醫師", (L,A,B)
+    return comment, comment, "建議請洽專業醫師", (L, A, B)
 
 def analyze_five_regions(image_path):
     img = cv2.imread(image_path)
@@ -66,9 +65,35 @@ def analyze_five_regions(image_path):
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
     h, w = mask.shape
 
-    regions = {}
-    # 分割五區 (簡化範例)
-    for i in range(5):
-        regions[f"區{i+1}"] = {"L": 0, "A": 0, "B": 0, "推論": "未知"}
+    regions = {
+        "心肺": mask[0:h//3, w//3:2*w//3],
+        "脾胃": mask[h//3:2*h//3, w//3:2*w//3],
+        "肝": mask[h//3:2*h//3, 0:w//3],
+        "膽": mask[h//3:2*h//3, 2*w//3:w],
+        "腎": mask[2*h//3:h, w//3:2*w//3],
+    }
 
-    return regions
+    results = {}
+    for name, region_mask in regions.items():
+        region_lab = lab[region_mask > 0]
+        if len(region_lab) == 0:
+            results[name] = {"L":0, "A":0, "B":0, "推論":"未知"}
+            continue
+
+        avg_lab = np.mean(region_lab, axis=0)
+        L, A, B = map(int, avg_lab)
+
+        if A > 145 and B < 150 and L > 120:
+            comment = "正常舌色"
+        elif B > 150 and A > 140 and L > 130:
+            comment = "偏黃，火氣較旺"
+        elif L > 190 and A < 135:
+            comment = "白苔，脾胃虛寒"
+        elif L < 90 and A < 130 and B < 130:
+            comment = "偏黑灰，腎氣不足"
+        else:
+            comment = "未知"
+
+        results[name] = {"L":L, "A":A, "B":B, "推論":comment}
+
+    return results
