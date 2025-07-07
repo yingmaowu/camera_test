@@ -1,104 +1,85 @@
+# color_analysis.py
+
 import cv2
 import numpy as np
+import sys
 
-def apply_grayworld(image):
-    b, g, r = cv2.split(image)
-    avg_b, avg_g, avg_r = np.mean(b), np.mean(g), np.mean(r)
-    avg_gray = (avg_b + avg_g + avg_r) / 3
-    b = np.clip(b * (avg_gray / avg_b), 0, 255).astype(np.uint8)
-    g = np.clip(g * (avg_gray / avg_g), 0, 255).astype(np.uint8)
-    r = np.clip(r * (avg_gray / avg_r), 0, 255).astype(np.uint8)
-    return cv2.merge([b, g, r])
+# 🗂️ 五區 ID 與中文名稱對應 table
+region_mapping = {
+    "liver": "肝",
+    "kidney": "腎",
+    "heart": "心",
+    "spleen": "脾胃",
+    "lung": "肺"
+}
 
-def apply_CLAHE(image):
-    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
-    l, a, b = cv2.split(lab)
-    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
-    l = clahe.apply(l)
-    lab = cv2.merge((l,a,b))
-    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-def extract_tongue_mask(image):
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower_red1 = np.array([0, 50, 50])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 50, 50])
-    upper_red2 = np.array([180, 255, 255])
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    return cv2.bitwise_or(mask1, mask2)
-
-def analyze_image_color(image_path):
+def analyze_tongue_regions(image_path):
+    """
+    分析舌頭五區 LAB 與 HSV 平均，回傳診斷結果 dict
+    """
     img = cv2.imread(image_path)
-    img = apply_grayworld(img)
-    img = apply_CLAHE(img)
+    if img is None:
+        raise FileNotFoundError(f"找不到圖片: {image_path}")
 
-    mask = extract_tongue_mask(img)
-    if np.sum(mask > 0) < 100:
-        return "未知", "舌頭面積過小", "請重新拍攝", (0,0,0)
+    img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
 
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    masked_lab_pixels = lab[mask > 0]
-    avg_lab = np.mean(masked_lab_pixels, axis=0)
-    L, A, B = map(int, avg_lab)
-
-    if A > 145 and B < 150 and L > 120:
-        comment = "正常舌色"
-    elif B > 150 and A > 140 and L > 130:
-        comment = "偏黃，火氣較旺"
-    elif L > 190 and A < 135:
-        comment = "白苔，脾胃虛寒"
-    elif L < 90 and A < 130 and B < 130:
-        comment = "偏黑灰，腎氣不足"
-    else:
-        comment = "未知"
-
-    return comment, "中醫推論: " + comment, "請依中醫師建議調理", (L,A,B)
-
-def analyze_five_regions(image_path):
-    img = cv2.imread(image_path)
-    img = apply_grayworld(img)
-    img = apply_CLAHE(img)
-
-    mask = extract_tongue_mask(img)
-    if np.sum(mask > 0) < 100:
-        print("⚠️ 舌頭有效面積過小")
-        return {"error": "舌頭面積過小"}
-
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    h, w = mask.shape
-
-    regions = {
-        "心肺": mask[0:h//3, w//3:2*w//3],
-        "脾胃": mask[h//3:2*h//3, w//3:2*w//3],
-        "肝": mask[h//3:2*h//3, 0:w//3],
-        "膽": mask[h//3:2*h//3, 2*w//3:w],
-        "腎": mask[2*h//3:h, w//3:2*w//3],
+    # 🔖 以圖像高寬切分 ROI (後續可改用 mask)
+    h, w, _ = img.shape
+    rois = {
+        "liver": img_lab[0:h//3, 0:w//2],
+        "kidney": img_lab[2*h//3:h, 0:w//2],
+        "heart": img_lab[h//3:2*h//3, w//3:2*w//3],
+        "spleen": img_lab[2*h//3:h, w//2:w],
+        "lung": img_lab[0:h//3, w//2:w]
     }
 
-    results = {}
-    for name, region_mask in regions.items():
-        region_lab = lab[
-            (region_mask > 0).nonzero()[0] + (lab.shape[0] - region_mask.shape[0]),
-            (region_mask > 0).nonzero()[1] + (lab.shape[1] - region_mask.shape[1])
-        ] if np.sum(region_mask > 0) > 0 else np.array([[0,0,0]])
+    result = {}
+    for region_id, roi_lab in rois.items():
+        # LAB 轉 BGR 再轉 HSV
+        roi_bgr = cv2.cvtColor(roi_lab, cv2.COLOR_LAB2BGR)
+        roi_hsv = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2HSV)
 
-        avg_lab = np.mean(region_lab, axis=0) if len(region_lab) > 0 else [0,0,0]
-        L, A, B = map(int, avg_lab)
+        avg_lab = np.mean(roi_lab.reshape(-1, 3), axis=0).tolist()
+        avg_hsv = np.mean(roi_hsv.reshape(-1, 3), axis=0).tolist()
 
-        print(f"{name}區: L={L}, A={A}, B={B}")
+        diagnosis = diagnose_region(avg_lab, avg_hsv)
 
-        if A > 145 and B < 150 and L > 120:
-            comment = "正常舌色"
-        elif B > 150 and A > 140 and L > 130:
-            comment = "偏黃，火氣較旺"
-        elif L > 190 and A < 135:
-            comment = "白苔，脾胃虛寒"
-        elif L < 90 and A < 130 and B < 130:
-            comment = "偏黑灰，腎氣不足"
-        else:
-            comment = "未知"
+        result[region_id] = {
+            "name": region_mapping[region_id],
+            "avg_lab": avg_lab,
+            "avg_hsv": avg_hsv,
+            "diagnosis": diagnosis
+        }
 
-        results[name] = {"L": L, "A": A, "B": B, "推論": comment}
+    return result
 
-    return results
+def diagnose_region(avg_lab, avg_hsv):
+    """
+    根據 LAB / HSV 平均值，簡易判斷五區狀況
+    """
+    L, A, B = avg_lab
+    if B > 150:
+        return "濕熱"
+    elif L < 50:
+        return "陰虛"
+    else:
+        return "正常"
+
+if __name__ == "__main__":
+    """
+    🧪 範例執行：
+    python color_analysis.py test.jpg
+    """
+    if len(sys.argv) < 2:
+        print("⚠️ 請輸入圖片路徑，例如: python color_analysis.py test.jpg")
+        sys.exit(1)
+
+    image_path = sys.argv[1]
+    try:
+        analysis = analyze_tongue_regions(image_path)
+        for region, info in analysis.items():
+            print(f"{info['name']} ({region}): {info['diagnosis']}")
+            print(f"  平均 LAB: {info['avg_lab']}")
+            print(f"  平均 HSV: {info['avg_hsv']}")
+    except Exception as e:
+        print(f"❌ 執行錯誤: {e}")
