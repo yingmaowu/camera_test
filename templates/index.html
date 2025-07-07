@@ -32,12 +32,13 @@
       border-radius: 10px;
     }
 
-    object#overlay {
+    #overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: auto;
+      height: 100%;
+      object-fit: contain;
       pointer-events: none;
       z-index: 10;
     }
@@ -61,7 +62,7 @@
 
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline muted></video>
-    <img id="overlay" src="/static/overlay.svg" style="position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:10;">
+    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay">
   </div>
 
   <div>
@@ -73,6 +74,7 @@
     const video = document.getElementById("camera");
     const captureBtn = document.getElementById("captureBtn");
     const historyBtn = document.getElementById("historyBtn");
+    const overlay = document.getElementById("overlay");
     const patientId = new URLSearchParams(window.location.search).get("patient");
     let snapshotBlob = null;
 
@@ -100,7 +102,8 @@
       const snap = document.createElement("canvas");
       snap.width = video.videoWidth; snap.height = video.videoHeight;
       const ctx = snap.getContext("2d");
-      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(video, 0, 0, snap.width, snap.height);
+      ctx.drawImage(overlay, 0, 0, snap.width, snap.height);
 
       const tongueRatio = getTongueRatio(snap);
       if (tongueRatio < 0.15) {
