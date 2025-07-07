@@ -12,9 +12,7 @@
       margin: 0;
       padding: 2rem;
     }
-    h2 {
-      margin-bottom: 1rem;
-    }
+    h2 { margin-bottom: 1rem; }
     .button-row {
       display: flex;
       justify-content: center;
@@ -32,9 +30,7 @@
       cursor: pointer;
       transition: background-color 0.2s;
     }
-    button:hover {
-      background-color: #357ABD;
-    }
+    button:hover { background-color: #357ABD; }
     #photoGrid {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
@@ -69,10 +65,12 @@
       border-collapse: collapse;
       margin-top: 1rem;
     }
-    th, td {
+    table, th, td {
       border: 1px solid #ccc;
-      padding: 4px;
-      font-size: 0.9rem;
+    }
+    th, td {
+      padding: 0.5rem;
+      text-align: center;
     }
   </style>
 </head>
@@ -115,27 +113,29 @@
           card.appendChild(img);
           card.appendChild(time);
           card.onclick = () => {
-            let tableHTML = "<table><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>";
+            let fiveRegionHtml = "<table><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>";
             if (record.five_regions) {
               for (const [region, data] of Object.entries(record.five_regions)) {
-                tableHTML += `<tr><td>${region}</td><td>${data.L}</td><td>${data.A}</td><td>${data.B}</td><td>${data.推論}</td></tr>`;
+                fiveRegionHtml += `<tr><td>${region}</td><td>${data.L || '-'}</td><td>${data.A || '-'}</td><td>${data.B || '-'}</td><td>${data.推論 || '-'}</td></tr>`;
               }
             } else {
-              tableHTML += "<tr><td colspan='5'>無五區分析結果</td></tr>";
+              fiveRegionHtml += "<tr><td colspan='5'>無五區資料</td></tr>";
             }
-            tableHTML += "</table>";
+            fiveRegionHtml += "</table>";
 
             Swal.fire({
               title: "🧠 中醫推論",
               html: `
-                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
-                <strong>推論內容：</strong><br>${record.comment}<br><br>
-                <strong>醫療建議：</strong><br>${record.advice}<br><br>
-                ${tableHTML}
+                <strong>舌苔主色：</strong> ${record.main_color}<br>
+                <strong>推論內容：</strong> ${record.comment}<br>
+                <strong>醫療建議：</strong> ${record.advice}<br><br>
+                <strong>Debug 數據：</strong><br>
+                L=${record.rgb[0]}, A=${record.rgb[1]}, B=${record.rgb[2]}<br><br>
+                <strong>五區分析</strong><br>
+                ${fiveRegionHtml}
                 <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;">刪除這筆紀錄</button>
               `,
               showConfirmButton: false,
-              width: 600,
               didOpen: () => {
                 document.getElementById("deleteBtn").onclick = () => {
                   Swal.fire({
