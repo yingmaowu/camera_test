@@ -1,109 +1,85 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <title>舌苔辨識相機</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <style>
-    body { margin: 0; font-family: sans-serif; background: #f0f0f0; text-align: center; }
-    h2 { margin-top: 1rem; }
+import cv2
+import numpy as np
 
-    #videoWrapper {
-      position: relative;
-      width: 100%;
-      max-width: 500px;
-      margin: auto;
-      overflow: hidden;
-      aspect-ratio: 458 / 545; /* overlay 實際比例 */
-      background: black;
+REGION_THEORY = {
+    "heart": "舌尖代表心肺功能，紅潤正常，偏紅可能火氣旺。",
+    "liver": "舌邊屬肝膽，紅紫為肝火，齒痕為脾虛。",
+    "spleen": "舌中對應脾胃，苔厚黃表示濕熱。",
+    "lung": "舌前屬肺，白苔為正常，黃苔為肺熱。",
+    "kidney": "舌根代表腎，黑苔灰苔顯示腎氣不足。"
+}
+
+REGION_ADVICE_RULE = {
+    "heart": {
+        "偏紅": "避免熬夜與過度壓力，多喝溫水。",
+        "其他": "維持規律作息與心情平穩。"
+    },
+    "liver": {
+        "偏紫": "注意疏肝解鬱，避免暴怒與壓力。",
+        "其他": "保持情緒舒暢，避免油炸物。"
+    },
+    "spleen": {
+        "偏黃": "脾胃濕熱，少吃油膩甜食，多運動。",
+        "其他": "飲食均衡，避免暴飲暴食。"
+    },
+    "lung": {
+        "偏黃": "肺熱，避免辛辣煎炸，多喝水。",
+        "其他": "保持空氣流通，避免吸菸。"
+    },
+    "kidney": {
+        "偏黑灰": "腎氣不足，注意保暖，早睡避免疲勞。",
+        "其他": "作息規律，避免久坐。"
+    }
+}
+
+def diagnose_region(L, A, B, region):
+    if A > 145 and B < 150 and L > 120:
+        return "正常"
+    elif B > 150 and A > 140 and L > 130:
+        return "偏黃"
+    elif L > 190 and A < 135:
+        return "白苔"
+    elif L < 90 and A < 130 and B < 130:
+        return "偏黑灰"
+    elif A > 160:
+        return "偏紅"
+    elif A > 150:
+        return "偏紫"
+    else:
+        return "其他"
+
+def analyze_tongue_regions(image_path):
+    img = cv2.imread(image_path)
+    if img is None:
+        raise FileNotFoundError(f"找不到圖片: {image_path}")
+
+    img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    h, w, _ = img.shape
+
+    rois = {
+        "heart": img_lab[0:h//3, w//3:2*w//3],
+        "liver": img_lab[h//3:2*h//3, 0:w//3],
+        "spleen": img_lab[h//3:2*h//3, 2*w//3:w],
+        "lung": img_lab[0:h//3, 0:w//3],
+        "kidney": img_lab[2*h//3:h, w//3:2*w//3],
     }
 
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      border-radius: 10px;
-    }
+    results = {}
+    for region, roi_lab in rois.items():
+        avg_lab = np.mean(roi_lab.reshape(-1, 3), axis=0)
+        L, A, B = avg_lab
+        diagnosis = diagnose_region(L, A, B, region)
 
-    #overlay {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      pointer-events: none;
-      z-index: 10;
-    }
+        # 根據診斷給出區域專屬建議
+        region_advice_dict = REGION_ADVICE_RULE.get(region, {})
+        advice = region_advice_dict.get(diagnosis, region_advice_dict.get("其他", "保持良好生活作息"))
 
-    button {
-      margin: 1rem 0.5rem;
-      padding: 0.6rem 1.2rem;
-      font-size: 1.1rem;
-      border: none;
-      border-radius: 6px;
-      background: #4a90e2;
-      color: white;
-      cursor: pointer;
-    }
+        results[region] = {
+            "區域": region,
+            "avg_lab": [int(L), int(A), int(B)],
+            "診斷": diagnosis,
+            "理論": REGION_THEORY.get(region, "無理論"),
+            "建議": advice
+        }
 
-    button:hover { background-color: #357ABD; }
-  </style>
-</head>
-<body>
-  <h2>舌苔辨識相機</h2>
-
-  <div id="videoWrapper">
-    <video id="camera" autoplay playsinline muted></video>
-    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay">
-  </div>
-
-  <div>
-    <button id="captureBtn">拍照</button>
-    <button id="historyBtn">查看歷史照片</button>
-  </div>
-
-  <script>
-    const video = document.getElementById("camera");
-    const captureBtn = document.getElementById("captureBtn");
-    const historyBtn = document.getElementById("historyBtn");
-    const patientId = new URLSearchParams(window.location.search).get("patient");
-
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-      .then(stream => { video.srcObject = stream; })
-      .catch(err => { Swal.fire("❌ 相機啟動失敗", err.message, "error"); });
-
-    captureBtn.addEventListener("click", () => {
-      const snap = document.createElement("canvas");
-      snap.width = video.videoWidth; snap.height = video.videoHeight;
-      const ctx = snap.getContext("2d");
-      ctx.drawImage(video, 0, 0, snap.width, snap.height);
-
-      snap.toBlob(blob => {
-        const formData = new FormData();
-        formData.append("image", blob);
-        formData.append("patient_id", patientId);
-        fetch("/upload", { method: "POST", body: formData })
-          .then(res => res.json())
-          .then(data => {
-            Swal.fire({
-              title: "🧠 中醫判讀結果",
-              html: `<b>舌苔主色：</b> ${data["舌苔主色"]}<br><b>推論：</b> ${data["中醫推論"]}<br><b>建議：</b> ${data["醫療建議"]}`,
-              icon: "info",
-              confirmButtonText: "查看歷史照片"
-            }).then(() => {
-              window.location.href = `/history?patient=${patientId}`;
-            });
-          })
-          .catch(err => {
-            Swal.fire("❌ 上傳失敗", err.message, "error");
-          });
-      }, "image/jpeg");
-    });
-
-    historyBtn.addEventListener("click", () => {
-      window.location.href = `/history?patient=${patientId}`;
-    });
-  </script>
-</body>
-</html>
+    return results
