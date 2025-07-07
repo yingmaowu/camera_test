@@ -59,7 +59,8 @@
             if (record.five_regions && !record.five_regions.error) {
               Object.keys(record.five_regions).forEach(region => {
                 const r = record.five_regions[region];
-                fiveRegionsTable += `<tr><td>${region}</td><td>${r.L}</td><td>${r.A}</td><td>${r.B}</td><td>${r.推論}</td></tr>`;
+                const avg_lab = r.avg_lab.map(v => Math.round(v));
+                fiveRegionsTable += `<tr><td>${r.name}</td><td>${avg_lab[0]}</td><td>${avg_lab[1]}</td><td>${avg_lab[2]}</td><td>${r.diagnosis}</td></tr>`;
               });
             } else {
               fiveRegionsTable += "<tr><td colspan='5'>無法判斷</td></tr>";
