@@ -1,6 +1,7 @@
 import cv2
 import numpy as np
 
+# 舌苔色彩對應中醫建議
 color_map = {
     "黃色": {
         "comment": "火氣大，需調理肝膽系統",
@@ -17,55 +18,83 @@ color_map = {
     "正常舌色": {
         "comment": "正常紅舌或紅帶薄白，健康狀態",
         "advice": "保持良好作息與飲食，持續追蹤變化"
+    },
+    "未知": {
+        "comment": "無法判斷",
+        "advice": "請重新拍攝更清晰且光線正常的圖片"
     }
 }
 
-def extract_tongue_mask(image_path):
-    img = cv2.imread(image_path)
-    hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+def apply_grayworld(image):
+    b, g, r = cv2.split(image)
+    avg_b, avg_g, avg_r = np.mean(b), np.mean(g), np.mean(r)
+    avg_gray = (avg_b + avg_g + avg_r) / 3
+    b = np.clip(b * (avg_gray / avg_b), 0, 255).astype(np.uint8)
+    g = np.clip(g * (avg_gray / avg_g), 0, 255).astype(np.uint8)
+    r = np.clip(r * (avg_gray / avg_r), 0, 255).astype(np.uint8)
+    return cv2.merge([b, g, r])
 
-    lower_red1 = np.array([0, 50, 50])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 50, 50])
-    upper_red2 = np.array([180, 255, 255])
-
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    mask = cv2.bitwise_or(mask1, mask2)
-    return img, mask
+def apply_CLAHE(image):
+    lab = cv2.cvtColor(image, cv2.COLOR_BGR2LAB)
+    l, a, b = cv2.split(lab)
+    clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8))
+    l = clahe.apply(l)
+    lab = cv2.merge((l,a,b))
+    return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
 
 def detect_blur(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     lap_var = cv2.Laplacian(gray, cv2.CV_64F).var()
-    return lap_var, lap_var < 80  # 門檻值可調整，越小越模糊
+    return lap_var, lap_var < 80  # 門檻值可調整
+
+def extract_tongue_mask(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_red1 = np.array([0, 50, 50])
+    upper_red1 = np.array([10, 255, 255])
+    lower_red2 = np.array([160, 50, 50])
+    upper_red2 = np.array([180, 255, 255])
+    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
+    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
+    mask = cv2.bitwise_or(mask1, mask2)
+    return mask
 
 def analyze_image_color(image_path):
-    img, mask = extract_tongue_mask(image_path)
+    img = cv2.imread(image_path)
+    img = apply_grayworld(img)
+    img = apply_CLAHE(img)
+
     blur_score, is_blurred = detect_blur(img)
     if is_blurred:
         return "模糊", f"圖片模糊度過高（Laplacian={blur_score:.2f}）", "請重新拍照，保持穩定與對焦", (0, 0, 0)
 
+    mask = extract_tongue_mask(img)
     masked_pixels = img[mask > 0]
     if len(masked_pixels) < 100:
         return "非舌頭", "偵測到的舌頭面積過小", "請重新拍照，確保舌頭位於鏡頭中間並清晰", (0, 0, 0)
 
-    # Lab 色彩分析
     lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
     masked_lab_pixels = lab[mask > 0]
     avg_lab = np.mean(masked_lab_pixels, axis=0)
     L, A, B = map(int, avg_lab)
 
-    # 分類判斷
-    if A > 140 and L > 120:
+    # 動態閾值調整
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    mean_brightness = np.mean(gray)
+    adjust_L = L + (120 - mean_brightness) * 0.1
+    adjust_A = A + (128 - mean_brightness) * 0.05
+    adjust_B = B + (128 - mean_brightness) * 0.05
+
+    # 多維條件判斷
+    if adjust_A > 145 and adjust_B < 150 and adjust_L > 120:
         category = "正常舌色"
-    elif B > 145 and L > 135:
+    elif adjust_B > 150 and adjust_A > 140 and adjust_L > 130:
         category = "黃色"
-    elif L > 190 and A < 135:
+    elif adjust_L > 190 and adjust_A < 135 and adjust_B < 140:
         category = "白色厚重"
-    elif L < 90 and A < 135 and B < 135:
+    elif adjust_L < 90 and adjust_A < 130 and adjust_B < 130:
         category = "黑灰色"
     else:
-        return "未知", "無法判斷舌苔色彩", "請重新拍攝更清晰且光線正常的圖片", (L, A, B)
+        category = "未知"
 
-    info = color_map[category]
+    info = color_map.get(category, color_map["未知"])
     return category, info["comment"], info["advice"], (L, A, B)
