@@ -3,84 +3,211 @@
 <head>
   <meta charset="UTF-8" />
   <title>舌苔辨識相機</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { margin:0; text-align:center; background:#f0f0f0; }
-    video, canvas { max-width:100%; height:auto; border:1px solid #ccc; }
-    #capture { font-size:1.2rem; padding:0.5rem 1rem; margin:1rem; }
-    #patient_id { font-size:1rem; padding:0.3rem; }
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #f0f0f0;
+      text-align: center;
+    }
+
+    h2 {
+      margin-top: 1rem;
+    }
+
+    #videoWrapper {
+      position: relative;
+      width: 100%;
+      max-width: 500px;
+      margin: auto;
+      overflow: hidden;
+      aspect-ratio: 3/4;
+      background: black;
+    }
+
+    video {
+      width: 150%;
+      transform: translateX(-25%);
+      object-fit: cover;
+      border-radius: 10px;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: auto;
+      z-index: 10;
+      pointer-events: none;
+    }
+
+    button {
+      margin: 1rem 0.5rem;
+      padding: 0.6rem 1.2rem;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 6px;
+      background: #4a90e2;
+      color: white;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #357ABD;
+    }
   </style>
 </head>
 <body>
   <h2>舌苔辨識相機</h2>
 
-  <video id="video" autoplay playsinline></video>
-  <canvas id="overlay"></canvas>
-  <br>
+  <div id="videoWrapper">
+    <video id="camera" autoplay playsinline muted></video>
+    <canvas id="overlay"></canvas>
+  </div>
 
-  <input id="patient_id" placeholder="病患ID">
-  <button id="capture">拍照</button>
+  <div>
+    <button id="captureBtn">拍照</button>
+    <button id="historyBtn">查看歷史照片</button>
+  </div>
 
   <script>
-    const video = document.getElementById('video');
-    const overlay = document.getElementById('overlay');
-    const ctx = overlay.getContext('2d');
+    const video = document.getElementById("camera");
+    const canvas = document.getElementById("overlay");
+    const captureBtn = document.getElementById("captureBtn");
+    const historyBtn = document.getElementById("historyBtn");
+    const patientId = new URLSearchParams(window.location.search).get("patient");
 
-    navigator.mediaDevices.getUserMedia({ video: true })
-      .then(stream => {
-        video.srcObject = stream;
-        video.addEventListener('loadedmetadata', () => {
-          overlay.width = video.videoWidth;
-          overlay.height = video.videoHeight;
-          drawOverlay();
-        });
-      })
-      .catch(err => alert("無法開啟相機: " + err));
+    let snapshotBlob = null;
+
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: "environment" } }
+    })
+    .then(stream => {
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        video.play();
+        setTimeout(drawOverlay, 500);
+      };
+    })
+    .catch(err => {
+      Swal.fire("❌ 相機啟動失敗", err.message, "error");
+    });
 
     function drawOverlay() {
-      ctx.clearRect(0, 0, overlay.width, overlay.height);
-      ctx.strokeStyle = 'pink';
-      ctx.lineWidth = 3;
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      canvas.width = vw;
+      canvas.height = vh;
+      const ctx = canvas.getContext("2d");
+      ctx.clearRect(0, 0, vw, vh);
 
-      // 舌頭輪廓（橢圓）
-      const centerX = overlay.width / 2;
-      const centerY = overlay.height * 0.65;
-      const radiusX = overlay.width * 0.2;
-      const radiusY = overlay.height * 0.25;
+      const centerX = vw / 2;
+      const centerY = vh / 2;
+      const width = vw * 0.4;
+      const height = vh * 0.5;
+      const left = centerX - width / 2;
+      const right = centerX + width / 2;
+      const top = centerY - height / 2;
+      const bottom = centerY + height / 2;
 
       ctx.beginPath();
-      ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, Math.PI * 2);
+      ctx.moveTo(left, top + 20);
+      ctx.bezierCurveTo(left, centerY, centerX - width * 0.2, bottom, centerX, bottom);
+      ctx.bezierCurveTo(centerX + width * 0.2, bottom, right, centerY, right, top + 20);
+      ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
+      ctx.closePath();
+      ctx.strokeStyle = "#ff69b4";
+      ctx.lineWidth = 3;
       ctx.stroke();
+
+      // ✅ 移除九宮格繪製，只保留輪廓
     }
 
-    document.getElementById('capture').onclick = () => {
-      const patient_id = document.getElementById('patient_id').value.trim();
-      if (!patient_id) {
-        alert("❌ 請輸入病患ID");
+    function isTongueLikeColor(r, g, b) {
+      const brightness = (r + g + b) / 3;
+      return (
+        r > 120 &&
+        g > 60 && g < 140 &&
+        b > 60 && b < 140 &&
+        brightness > 100 && brightness < 220
+      );
+    }
+
+    function getTongueRatio(canvas) {
+      const ctx = canvas.getContext("2d");
+      const w = canvas.width;
+      const h = canvas.height;
+      const data = ctx.getImageData(w * 0.33, h * 0.33, w * 0.33, h * 0.33).data;
+      let count = 0, total = data.length / 4;
+      for (let i = 0; i < data.length; i += 4) {
+        let r = data[i], g = data[i+1], b = data[i+2];
+        if (isTongueLikeColor(r, g, b)) count++;
+      }
+      return count / total;
+    }
+
+    captureBtn.addEventListener("click", () => {
+      const snap = document.createElement("canvas");
+      snap.width = video.videoWidth;
+      snap.height = video.videoHeight;
+      const ctx = snap.getContext("2d");
+      ctx.drawImage(video, 0, 0);
+      ctx.drawImage(canvas, 0, 0);
+
+      const tongueRatio = getTongueRatio(snap);
+      if (tongueRatio < 0.15) {
+        Swal.fire("⚠️ 舌頭比例過低", "請確保舌頭完整位於輪廓內再拍照", "warning");
+        snapshotBlob = null;
         return;
       }
 
-      const canvas = document.createElement('canvas');
-      canvas.width = overlay.width;
-      canvas.height = overlay.height;
-      const cctx = canvas.getContext('2d');
+      snap.toBlob(blob => {
+        snapshotBlob = blob;
 
-      cctx.drawImage(video, 0, 0);
-      cctx.drawImage(overlay, 0, 0);
+        Swal.fire({
+          title: "📸 拍照完成",
+          text: "是否上傳並查看？",
+          icon: "question",
+          showCancelButton: true,
+          confirmButtonText: "確認上傳",
+          cancelButtonText: "重新拍照"
+        }).then(result => {
+          if (result.isConfirmed) {
+            const formData = new FormData();
+            formData.append("image", snapshotBlob);
+            formData.append("patient_id", patientId);
+            fetch("/upload", { method: "POST", body: formData })
+              .then(res => res.json())
+              .then(data => {
+                Swal.fire({
+                  title: "🧠 中醫判讀結果",
+                  html: `
+                    <b>舌苔主色：</b> ${data["舌苔主色"]}<br>
+                    <b>推論：</b> ${data["中醫推論"]}<br>
+                    <b>建議：</b> ${data["醫療建議"]}
+                  `,
+                  icon: "info",
+                  confirmButtonText: "查看歷史照片"
+                }).then(() => {
+                  window.location.href = `/history?patient=${patientId}`;
+                });
+              })
+              .catch(err => {
+                Swal.fire("❌ 上傳失敗", err.message, "error");
+              });
+          } else {
+            snapshotBlob = null;
+          }
+        });
+      }, "image/jpeg");
+    });
 
-      canvas.toBlob(blob => {
-        const form = new FormData();
-        form.append('image', blob, 'capture.jpg');
-        form.append('patient_id', patient_id);
-
-        fetch('/upload', { method: 'POST', body: form })
-          .then(res => res.json())
-          .then(data => {
-            console.log(data);
-            alert("✅ 上傳成功\n" + JSON.stringify(data, null, 2));
-          })
-          .catch(err => alert("❌ 上傳失敗: " + err));
-      }, 'image/jpeg');
-    };
+    historyBtn.addEventListener("click", () => {
+      window.location.href = `/history?patient=${patientId}`;
+    });
   </script>
 </body>
 </html>
