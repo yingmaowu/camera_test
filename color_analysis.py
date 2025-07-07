@@ -1,17 +1,7 @@
-# color_analysis.py
-
 import cv2
 import numpy as np
 import sys
-
-# 🗂️ 五區 ID 與中文名稱對應 table
-region_mapping = {
-    "liver": "肝",
-    "kidney": "腎",
-    "heart": "心",
-    "spleen": "脾胃",
-    "lung": "肺"
-}
+from tongue_regions import REGION_MAP as region_mapping
 
 def apply_grayworld(image):
     b, g, r = cv2.split(image)
@@ -41,13 +31,6 @@ def extract_tongue_mask(image):
     return cv2.bitwise_or(mask1, mask2)
 
 def analyze_image_color(image_path):
-    """
-    主色分析函數，回傳:
-    - main_color: str
-    - comment: str
-    - advice: str
-    - rgb: [R,G,B]
-    """
     img = cv2.imread(image_path)
     if img is None:
         raise FileNotFoundError(f"找不到圖片: {image_path}")
@@ -55,11 +38,9 @@ def analyze_image_color(image_path):
     img = apply_grayworld(img)
     img = apply_CLAHE(img)
 
-    # 計算 RGB 平均
     avg_rgb = np.mean(img.reshape(-1,3), axis=0).astype(int).tolist()
     r, g, b = avg_rgb
 
-    # 🔎 Rule-based 推論
     if r > 150 and g < 100:
         main_color = "偏紅"
         comment = "舌質偏紅，可能有火氣"
@@ -143,39 +124,4 @@ def analyze_tongue_regions(image_path):
         roi_hsv = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2HSV)
 
         avg_lab = np.mean(roi_lab.reshape(-1, 3), axis=0).tolist()
-        avg_hsv = np.mean(roi_hsv.reshape(-1, 3), axis=0).tolist()
-
-        diagnosis = diagnose_region(avg_lab, avg_hsv)
-
-        result[region_id] = {
-            "name": region_mapping[region_id],
-            "avg_lab": avg_lab,
-            "avg_hsv": avg_hsv,
-            "diagnosis": diagnosis
-        }
-
-    return result
-
-def diagnose_region(avg_lab, avg_hsv):
-    L, A, B = avg_lab
-    if B > 150:
-        return "濕熱"
-    elif L < 50:
-        return "陰虛"
-    else:
-        return "正常"
-
-if __name__ == "__main__":
-    if len(sys.argv) < 2:
-        print("⚠️ 請輸入圖片路徑，例如: python color_analysis.py test.jpg")
-        sys.exit(1)
-
-    image_path = sys.argv[1]
-    try:
-        analysis = analyze_tongue_regions(image_path)
-        for region, info in analysis.items():
-            print(f"{info['name']} ({region}): {info['diagnosis']}")
-            print(f"  平均 LAB: {info['avg_lab']}")
-            print(f"  平均 HSV: {info['avg_hsv']}")
-    except Exception as e:
-        print(f"❌ 執行錯誤: {e}")
+        avg_hsv = np.mean(roi_hsv.reshape(-1, 3), axis=0).tol
