@@ -37,9 +37,9 @@
     }
     #photoGrid {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
       gap: 20px;
-      max-width: 1000px;
+      max-width: 1200px;
       margin: 2rem auto;
     }
     .photo-card {
@@ -49,6 +49,7 @@
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
       transition: transform 0.3s ease, box-shadow 0.3s ease;
       cursor: pointer;
+      padding: 1rem;
     }
     .photo-card:hover {
       transform: translateY(-5px);
@@ -58,11 +59,25 @@
       width: 100%;
       display: block;
       object-fit: cover;
+      border-radius: 5px;
     }
     .timestamp {
       padding: 0.4rem;
       font-size: 0.9rem;
       color: #666;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 4px;
+      text-align: center;
+    }
+    th {
+      background: #eee;
     }
   </style>
 </head>
@@ -94,52 +109,28 @@
         records.forEach(record => {
           const card = document.createElement("div");
           card.className = "photo-card";
-          const img = document.createElement("img");
-          img.src = record.image_url;
-          const time = document.createElement("div");
-          time.className = "timestamp";
-          time.textContent = formatTime(record.timestamp);
-          card.appendChild(img);
-          card.appendChild(time);
-          card.onclick = () => {
-            Swal.fire({
-              title: "🧠 中醫推論",
-              html: `
-                <strong>舌苔主色：</strong> ${record.main_color}<br><br>
-                <strong>推論內容：</strong><br>${record.comment}<br><br>
-                <strong>醫療建議：</strong><br>${record.advice}<br><br>
-                <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;">刪除這筆紀錄</button>
-              `,
-              showConfirmButton: false,
-              didOpen: () => {
-                document.getElementById("deleteBtn").onclick = () => {
-                  Swal.fire({
-                    title: "確定要刪除？",
-                    text: "這筆資料將無法復原",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "刪除",
-                    cancelButtonText: "取消"
-                  }).then(result => {
-                    if (result.isConfirmed) {
-                      fetch("/delete_record", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: record._id })
-                      }).then(res => res.json())
-                        .then(resp => {
-                          if (resp.success) {
-                            Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
-                          } else {
-                            Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
-                          }
-                        });
-                    }
-                  });
-                };
-              }
-            });
-          };
+          card.innerHTML = `
+            <img src="${record.image_url}" alt="舌苔照片">
+            <p><b>舌苔主色:</b> ${record.main_color}</p>
+            <p><b>中醫推論:</b> ${record.comment}</p>
+            <p><b>醫療建議:</b> ${record.advice}</p>
+            <div class="five-regions">
+              <h4>五區分析</h4>
+              <table>
+                <tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>
+                ${Object.entries(record.five_regions || {}).map(([region, info]) => `
+                  <tr>
+                    <td>${region}</td>
+                    <td>${info.L}</td>
+                    <td>${info.A}</td>
+                    <td>${info.B}</td>
+                    <td>${info.推論}</td>
+                  </tr>
+                `).join('')}
+              </table>
+            </div>
+            <div class="timestamp">${formatTime(record.timestamp)}</div>
+          `;
           photoGrid.appendChild(card);
         });
       });
