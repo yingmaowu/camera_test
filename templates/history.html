@@ -5,169 +5,37 @@
   <title>歷史照片紀錄</title>
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: #f0f0f0;
-      text-align: center;
-      margin: 0;
-      padding: 2rem;
-    }
-    h2 { margin-bottom: 1rem; }
-    .button-row {
-      display: flex;
-      justify-content: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-    }
-    button {
-      font-size: 1rem;
-      padding: 0.5rem 1.2rem;
-      margin: 0.5rem 0;
-      border: none;
-      border-radius: 8px;
-      background-color: #4a90e2;
-      color: white;
-      cursor: pointer;
-      transition: background-color 0.2s;
-    }
-    button:hover { background-color: #357ABD; }
-    #photoGrid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: 20px;
-      max-width: 1000px;
-      margin: 2rem auto;
-    }
-    .photo-card {
-      background: #fff;
-      border-radius: 10px;
-      overflow: hidden;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      cursor: pointer;
-    }
-    .photo-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
-    }
-    .photo-card img {
-      width: 100%;
-      display: block;
-      object-fit: cover;
-    }
-    .timestamp {
-      padding: 0.4rem;
-      font-size: 0.9rem;
-      color: #666;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 1rem;
-    }
-    table, th, td {
-      border: 1px solid #ccc;
-    }
-    th, td {
-      padding: 0.5rem;
-      text-align: center;
-    }
+    body { font-family: sans-serif; padding: 2rem; background: #f0f0f0; text-align: center; }
+    .photo { width: 150px; margin: 1rem; border: 2px solid #ccc; border-radius: 10px; }
+    table { margin: auto; border-collapse: collapse; margin-top: 1rem; }
+    td, th { border: 1px solid #666; padding: 0.5rem; }
   </style>
 </head>
 <body>
   <h2>📁 歷史照片紀錄</h2>
-  <div class="button-row">
-    <button onclick="window.location.href='/'">回病患 ID 輸入</button>
-    <button id="backIndex">回拍照頁</button>
-  </div>
-  <div id="photoGrid"></div>
-
+  <div id="photos"></div>
   <script>
-    const photoGrid = document.getElementById("photoGrid");
-    const urlParams = new URLSearchParams(window.location.search);
-    const patientId = urlParams.get("patient") || "";
-    document.getElementById("backIndex").onclick = () => {
-      window.location.href = `/index?patient=${patientId}`;
-    };
-
-    function formatTime(iso) {
-      const d = new Date(iso);
-      return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-    }
-
-    fetch(`/history_data?patient=${patientId}`)
-      .then(res => res.json())
-      .then(records => {
-        if (!records.length) {
-          photoGrid.innerHTML = "<p>尚無照片</p>";
-          return;
+    const p = new URLSearchParams(location.search).get("patient");
+    fetch(`/history_data?patient=${p}`).then(r=>r.json()).then(d=>{
+      if (!d.length) return document.body.innerHTML += "<p>尚無紀錄</p>";
+      d.forEach(r=>{
+        const img = document.createElement("img");
+        img.src = r.image_url; img.className = "photo";
+        img.onclick = () => {
+          Swal.fire({
+            html: `<b>主色:</b> ${r.main_color}<br><b>推論:</b> ${r.comment}<br>
+              <b>建議:</b> ${r.advice}<br><hr>
+              <b>Debug:</b> ${JSON.stringify(r.debug)}<br>
+              <table><tr><th>區</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>${
+                Object.entries(r.five_regions || {}).map(([k,v])=>
+                  `<tr><td>${k}</td><td>${v.L||"-"}</td><td>${v.A||"-"}</td><td>${v.B||"-"}</td><td>${v.推論||"-"}</td></tr>`
+                ).join("")
+              }</table>`
+          })
         }
-        records.forEach(record => {
-          const card = document.createElement("div");
-          card.className = "photo-card";
-          const img = document.createElement("img");
-          img.src = record.image_url;
-          const time = document.createElement("div");
-          time.className = "timestamp";
-          time.textContent = formatTime(record.timestamp);
-          card.appendChild(img);
-          card.appendChild(time);
-          card.onclick = () => {
-            let fiveRegionHtml = "<table><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>";
-            if (record.five_regions) {
-              for (const [region, data] of Object.entries(record.five_regions)) {
-                fiveRegionHtml += `<tr><td>${region}</td><td>${data.L || '-'}</td><td>${data.A || '-'}</td><td>${data.B || '-'}</td><td>${data.推論 || '-'}</td></tr>`;
-              }
-            } else {
-              fiveRegionHtml += "<tr><td colspan='5'>無五區資料</td></tr>";
-            }
-            fiveRegionHtml += "</table>";
-
-            Swal.fire({
-              title: "🧠 中醫推論",
-              html: `
-                <strong>舌苔主色：</strong> ${record.main_color}<br>
-                <strong>推論內容：</strong> ${record.comment}<br>
-                <strong>醫療建議：</strong> ${record.advice}<br><br>
-                <strong>Debug 數據：</strong><br>
-                L=${record.rgb[0]}, A=${record.rgb[1]}, B=${record.rgb[2]}<br><br>
-                <strong>五區分析</strong><br>
-                ${fiveRegionHtml}
-                <button id="deleteBtn" style="margin-top:1rem;padding:0.5rem 1rem;background:#e74c3c;color:white;border:none;border-radius:6px;">刪除這筆紀錄</button>
-              `,
-              showConfirmButton: false,
-              didOpen: () => {
-                document.getElementById("deleteBtn").onclick = () => {
-                  Swal.fire({
-                    title: "確定要刪除？",
-                    text: "這筆資料將無法復原",
-                    icon: "warning",
-                    showCancelButton: true,
-                    confirmButtonText: "刪除",
-                    cancelButtonText: "取消"
-                  }).then(result => {
-                    if (result.isConfirmed) {
-                      fetch("/delete_record", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ id: record._id })
-                      }).then(res => res.json())
-                        .then(resp => {
-                          if (resp.success) {
-                            Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
-                          } else {
-                            Swal.fire("❌ 刪除失敗", resp.error || "未知錯誤", "error");
-                          }
-                        });
-                    }
-                  });
-                };
-              }
-            });
-          };
-          photoGrid.appendChild(card);
-        });
-      });
+        document.getElementById("photos").append(img);
+      })
+    })
   </script>
 </body>
 </html>
