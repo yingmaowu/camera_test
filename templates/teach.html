@@ -5,29 +5,9 @@
   <title>教學資源</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-      background: #f0f0f0;
-      font-family: "Segoe UI", sans-serif;
-      margin: 0;
-      padding: 2rem;
-    }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: "Segoe UI", sans-serif; margin: 0; padding: 2rem; }
     h2 { margin-bottom: 2rem; }
-    button {
-      padding: 1rem 2rem;
-      font-size: 1.1rem;
-      margin: 0.5rem;
-      background-color: #4a90e2;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      width: 280px;
-    }
+    button { padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem; background-color: #4a90e2; color: white; border: none; border-radius: 8px; cursor: pointer; width: 280px; }
     button:hover { background-color: #357ABD; }
   </style>
 </head>
@@ -37,6 +17,6 @@
   <button onclick="alert('舌象判別練習 - 開發中')">舌象判別練習</button>
   <button onclick="alert('中西醫對照查詢 - 開發中')">中西醫對照查詢</button>
   <button onclick="alert('病例推論練習 - 開發中')">病例推論練習</button>
-  <button onclick="location.href='/'">回首頁</button>
+  <button onclick="history.back()">上一頁</button>
 </body>
 </html>
