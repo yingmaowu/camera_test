@@ -34,14 +34,14 @@
       border-radius: 10px;
     }
 
-    canvas {
+    svg.overlay {
       position: absolute;
       top: 0;
       left: 0;
       width: 100%;
-      height: auto;
-      z-index: 10;
+      height: 100%;
       pointer-events: none;
+      z-index: 10;
     }
 
     button {
@@ -65,7 +65,16 @@
 
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline muted></video>
-    <canvas id="overlay"></canvas>
+
+    <!-- ✅ SVG overlay 五區分區 -->
+    <svg class="overlay" viewBox="0 0 500 750">
+      <path id="heart_lung" d="M150,200 Q250,100 350,200 Q300,250 200,250 Z" fill="rgba(255,0,0,0.3)" stroke="red"/>
+      <path id="liver" d="M100,300 Q250,250 400,300 Q350,350 150,350 Z" fill="rgba(0,255,0,0.3)" stroke="green"/>
+      <path id="spleen_stomach" d="M125,400 Q250,350 375,400 Q350,450 150,450 Z" fill="rgba(255,255,0,0.3)" stroke="gold"/>
+      <path id="gallbladder" d="M175,500 Q250,450 325,500 Q300,550 200,550 Z" fill="rgba(0,0,255,0.3)" stroke="blue"/>
+      <path id="kidney" d="M150,600 Q250,550 350,600 Q300,650 200,650 Z" fill="rgba(128,0,128,0.3)" stroke="purple"/>
+    </svg>
+
   </div>
 
   <div>
@@ -75,7 +84,6 @@
 
   <script>
     const video = document.getElementById("camera");
-    const canvas = document.getElementById("overlay");
     const captureBtn = document.getElementById("captureBtn");
     const historyBtn = document.getElementById("historyBtn");
     const patientId = new URLSearchParams(window.location.search).get("patient");
@@ -89,42 +97,11 @@
       video.srcObject = stream;
       video.onloadedmetadata = () => {
         video.play();
-        setTimeout(drawOverlay, 500);
       };
     })
     .catch(err => {
       Swal.fire("❌ 相機啟動失敗", err.message, "error");
     });
-
-    function drawOverlay() {
-      const vw = video.videoWidth;
-      const vh = video.videoHeight;
-      canvas.width = vw;
-      canvas.height = vh;
-      const ctx = canvas.getContext("2d");
-      ctx.clearRect(0, 0, vw, vh);
-
-      const centerX = vw / 2;
-      const centerY = vh / 2;
-      const width = vw * 0.4;
-      const height = vh * 0.5;
-      const left = centerX - width / 2;
-      const right = centerX + width / 2;
-      const top = centerY - height / 2;
-      const bottom = centerY + height / 2;
-
-      ctx.beginPath();
-      ctx.moveTo(left, top + 20);
-      ctx.bezierCurveTo(left, centerY, centerX - width * 0.2, bottom, centerX, bottom);
-      ctx.bezierCurveTo(centerX + width * 0.2, bottom, right, centerY, right, top + 20);
-      ctx.bezierCurveTo(right, top - 15, left, top - 15, left, top + 20);
-      ctx.closePath();
-      ctx.strokeStyle = "#ff69b4";
-      ctx.lineWidth = 3;
-      ctx.stroke();
-
-      // ✅ 移除九宮格繪製，只保留輪廓
-    }
 
     function isTongueLikeColor(r, g, b) {
       const brightness = (r + g + b) / 3;
@@ -155,7 +132,6 @@
       snap.height = video.videoHeight;
       const ctx = snap.getContext("2d");
       ctx.drawImage(video, 0, 0);
-      ctx.drawImage(canvas, 0, 0);
 
       const tongueRatio = getTongueRatio(snap);
       if (tongueRatio < 0.15) {
