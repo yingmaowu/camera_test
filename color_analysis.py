@@ -1,7 +1,5 @@
 import cv2
 import numpy as np
-import sys
-from tongue_regions import REGION_MAP as region_mapping
 
 def apply_grayworld(image):
     b, g, r = cv2.split(image)
@@ -19,16 +17,6 @@ def apply_CLAHE(image):
     l = clahe.apply(l)
     lab = cv2.merge((l,a,b))
     return cv2.cvtColor(lab, cv2.COLOR_LAB2BGR)
-
-def extract_tongue_mask(image):
-    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower_red1 = np.array([0, 50, 50])
-    upper_red1 = np.array([10, 255, 255])
-    lower_red2 = np.array([160, 50, 50])
-    upper_red2 = np.array([180, 255, 255])
-    mask1 = cv2.inRange(hsv, lower_red1, upper_red1)
-    mask2 = cv2.inRange(hsv, lower_red2, upper_red2)
-    return cv2.bitwise_or(mask1, mask2)
 
 def analyze_image_color(image_path):
     img = cv2.imread(image_path)
@@ -56,52 +44,6 @@ def analyze_image_color(image_path):
 
     return main_color, comment, advice, avg_rgb
 
-def analyze_five_regions(image_path):
-    img = cv2.imread(image_path)
-    img = apply_grayworld(img)
-    img = apply_CLAHE(img)
-
-    mask = extract_tongue_mask(img)
-    if np.sum(mask > 0) < 100:
-        print("⚠️ 舌頭有效面積過小")
-        return {"error": "舌頭面積過小"}
-
-    lab = cv2.cvtColor(img, cv2.COLOR_BGR2Lab)
-    tongue_lab = lab[mask > 0]
-
-    pixel_count = len(tongue_lab)
-    print(f"舌頭整體有效像素數 = {pixel_count}")
-
-    if pixel_count == 0:
-        return {"error": "無有效舌頭像素"}
-
-    avg_lab = np.mean(tongue_lab, axis=0)
-    L, A, B = map(int, avg_lab)
-
-    print(f"舌頭整體 L={L}, A={A}, B={B}")
-
-    if A > 145 and B < 150 and L > 120:
-        comment = "正常舌色"
-    elif B > 150 and A > 140 and L > 130:
-        comment = "偏黃，火氣較旺"
-    elif L > 190 and A < 135:
-        comment = "白苔，脾胃虛寒"
-    elif L < 90 and A < 130 and B < 130:
-        comment = "偏黑灰，腎氣不足"
-    else:
-        comment = "未知"
-
-    results = {
-        "整體分析": {
-            "L": L,
-            "A": A,
-            "B": B,
-            "推論": comment
-        }
-    }
-
-    return results
-
 def analyze_tongue_regions(image_path):
     img = cv2.imread(image_path)
     if img is None:
@@ -110,18 +52,36 @@ def analyze_tongue_regions(image_path):
     img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     h, w, _ = img.shape
 
+    # 固定五區 ROI 定義 (以你舌頭 overlay 對應)
     rois = {
-        "liver": img_lab[0:h//3, 0:w//2],
-        "kidney": img_lab[2*h//3:h, 0:w//2],
-        "heart": img_lab[h//3:2*h//3, w//3:2*w//3],
-        "spleen": img_lab[2*h//3:h, w//2:w],
-        "lung": img_lab[0:h//3, w//2:w]
+        "heart": img_lab[int(h*0.15):int(h*0.30), int(w*0.40):int(w*0.60)],
+        "lung": img_lab[int(h*0.05):int(h*0.20), int(w*0.30):int(w*0.70)],
+        "liver": img_lab[int(h*0.30):int(h*0.50), int(w*0.00):int(w*0.30)],
+        "spleen": img_lab[int(h*0.30):int(h*0.50), int(w*0.70):int(w*1.00)],
+        "kidney": img_lab[int(h*0.50):int(h*0.80), int(w*0.30):int(w*0.70)]
     }
 
     result = {}
-    for region_id, roi_lab in rois.items():
-        roi_bgr = cv2.cvtColor(roi_lab, cv2.COLOR_LAB2BGR)
-        roi_hsv = cv2.cvtColor(roi_bgr, cv2.COLOR_BGR2HSV)
-
+    for region_name, roi_lab in rois.items():
         avg_lab = np.mean(roi_lab.reshape(-1, 3), axis=0).tolist()
-        avg_hsv = np.mean(roi_hsv.reshape(-1, 3), axis=0).tol
+        L, A, B = map(int, avg_lab)
+
+        # 簡單診斷判斷
+        if A > 145 and B < 150 and L > 120:
+            diagnosis = "正常"
+        elif B > 150 and A > 140 and L > 130:
+            diagnosis = "偏黃，火氣旺"
+        elif L > 190 and A < 135:
+            diagnosis = "白苔，脾胃虛寒"
+        elif L < 90 and A < 130 and B < 130:
+            diagnosis = "偏黑灰，腎氣不足"
+        else:
+            diagnosis = "未知"
+
+        result[region_name] = {
+            "name": region_name,
+            "avg_lab": avg_lab,
+            "diagnosis": diagnosis
+        }
+
+    return result
