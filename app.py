@@ -10,8 +10,7 @@ import cloudinary.uploader
 import tempfile
 import io
 from bson import ObjectId
-from color_analysis import analyze_image_color, analyze_five_regions
-
+from color_analysis import analyze_image_color, analyze_five_regions, analyze_tongue_regions
 
 load_dotenv()
 app = Flask(__name__)
