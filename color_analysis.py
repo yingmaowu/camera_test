@@ -34,43 +34,38 @@ REGION_ADVICE_RULE = {
 
 def diagnose_region(L, A, B, region):
     if A > 145 and B < 150 and L > 120:
-        diagnosis = "健康"
-        advice = "維持現狀就很棒了"
+        return "健康"
     elif B > 150 and A > 140 and L > 130:
-        diagnosis = "偏黃"
+        return "偏黃"
     elif L > 190 and A < 135:
-        diagnosis = "白苔"
+        return "白苔"
     elif L < 90 and A < 130 and B < 130:
-        diagnosis = "偏黑灰"
+        return "偏黑灰"
     elif A > 160:
-        diagnosis = "偏紅"
+        return "偏紅"
     elif A > 150:
-        diagnosis = "偏紫"
+        return "偏紫"
     else:
-        diagnosis = "無明顯症狀"
-
-    if diagnosis != "健康" and diagnosis != "無明顯症狀":
-        region_advice_dict = REGION_ADVICE_RULE.get(region, {})
-        advice = region_advice_dict.get(diagnosis, "保持良好生活作息")
-    elif diagnosis == "無明顯症狀":
-        region_advice_dict = REGION_ADVICE_RULE.get(region, {})
-        advice = region_advice_dict.get("其他", "保持良好生活作息")
-
-    return diagnosis, advice
+        return "其他"
 
 def analyze_image_color(image_path):
     img = cv2.imread(image_path)
-    if img is None:
-        raise FileNotFoundError(f"找不到圖片: {image_path}")
-
+    img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
+    avg_lab = np.mean(img_lab.reshape(-1,3), axis=0)
+    L, A, B = avg_lab
+    if A > 145 and B < 150 and L > 120:
+        main_color = "健康"
+        comment = "舌質健康，無異狀"
+        advice = "維持現有作息即可"
+    else:
+        main_color = "其他"
+        comment = "無法明確判斷"
+        advice = "建議諮詢專業醫師"
     avg_rgb = np.mean(img.reshape(-1,3), axis=0).astype(int).tolist()
-    return "淡紅", "正常舌色", "維持現狀就很棒了", avg_rgb
+    return main_color, comment, advice, avg_rgb
 
 def analyze_tongue_regions(image_path):
     img = cv2.imread(image_path)
-    if img is None:
-        raise FileNotFoundError(f"找不到圖片: {image_path}")
-
     img_lab = cv2.cvtColor(img, cv2.COLOR_BGR2LAB)
     h, w, _ = img.shape
 
@@ -86,11 +81,19 @@ def analyze_tongue_regions(image_path):
     for region, roi_lab in rois.items():
         avg_lab = np.mean(roi_lab.reshape(-1, 3), axis=0)
         L, A, B = avg_lab
-        diagnosis, advice = diagnose_region(L, A, B, region)
+        diagnosis = diagnose_region(L, A, B, region)
+
+        if diagnosis == "健康":
+            display_diag = "舌苔健康無異狀"
+            advice = "維持現有作息即可"
+        else:
+            display_diag = diagnosis
+            advice = REGION_ADVICE_RULE.get(region, {}).get(diagnosis, "保持良好生活作息")
 
         results[region] = {
             "區域": region,
-            "診斷": diagnosis,
+            "診斷": display_diag,
+            "理論": REGION_THEORY.get(region, "無理論"),
             "建議": advice
         }
 
