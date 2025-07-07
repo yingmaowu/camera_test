@@ -11,7 +11,6 @@ from bson import ObjectId
 from color_analysis import analyze_image_color, analyze_five_regions
 
 load_dotenv()
-
 app = Flask(__name__)
 
 # MongoDB Atlas 連線
@@ -61,7 +60,7 @@ def upload_image():
             tmp.write(image_bytes)
             tmp.flush()
             main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            five_regions = analyze_five_regions(tmp.name)
+            five_regions = analyze_five_regions(tmp.name)  # 🔍 五區分析
             os.remove(tmp.name)
 
         record = {
@@ -83,7 +82,7 @@ def upload_image():
             "中醫推論": comment,
             "醫療建議": advice,
             "主色RGB": rgb,
-            "五區分析": five_regions
+            "五區分析": five_regions  # 🔍 回傳
         })
 
     except Exception as e:
