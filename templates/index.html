@@ -13,9 +13,7 @@
       text-align: center;
     }
 
-    h2 {
-      margin-top: 1rem;
-    }
+    h2 { margin-top: 1rem; }
 
     #videoWrapper {
       position: relative;
@@ -55,9 +53,7 @@
       cursor: pointer;
     }
 
-    button:hover {
-      background-color: #357ABD;
-    }
+    button:hover { background-color: #357ABD; }
   </style>
 </head>
 <body>
@@ -65,8 +61,6 @@
 
   <div id="videoWrapper">
     <video id="camera" autoplay playsinline muted></video>
-
-    <!-- ✅ 引入 static overlay SVG -->
     <img id="overlay" src="/static/overlay.svg" style="position:absolute;top:0;left:0;width:100%;pointer-events:none;z-index:10;">
   </div>
 
@@ -80,62 +74,42 @@
     const captureBtn = document.getElementById("captureBtn");
     const historyBtn = document.getElementById("historyBtn");
     const patientId = new URLSearchParams(window.location.search).get("patient");
-
     let snapshotBlob = null;
 
-    navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: "environment" } }
-    })
-    .then(stream => {
-      video.srcObject = stream;
-      video.onloadedmetadata = () => {
-        video.play();
-      };
-    })
-    .catch(err => {
-      Swal.fire("❌ 相機啟動失敗", err.message, "error");
-    });
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+      .then(stream => { video.srcObject = stream; video.onloadedmetadata = () => video.play(); })
+      .catch(err => { Swal.fire("❌ 相機啟動失敗", err.message, "error"); });
 
     function isTongueLikeColor(r, g, b) {
       const brightness = (r + g + b) / 3;
-      return (
-        r > 120 &&
-        g > 60 && g < 140 &&
-        b > 60 && b < 140 &&
-        brightness > 100 && brightness < 220
-      );
+      return (r > 120 && g > 60 && g < 140 && b > 60 && b < 140 && brightness > 100 && brightness < 220);
     }
 
     function getTongueRatio(canvas) {
       const ctx = canvas.getContext("2d");
-      const w = canvas.width;
-      const h = canvas.height;
+      const w = canvas.width, h = canvas.height;
       const data = ctx.getImageData(w * 0.33, h * 0.33, w * 0.33, h * 0.33).data;
       let count = 0, total = data.length / 4;
       for (let i = 0; i < data.length; i += 4) {
-        let r = data[i], g = data[i+1], b = data[i+2];
-        if (isTongueLikeColor(r, g, b)) count++;
+        if (isTongueLikeColor(data[i], data[i+1], data[i+2])) count++;
       }
       return count / total;
     }
 
     captureBtn.addEventListener("click", () => {
       const snap = document.createElement("canvas");
-      snap.width = video.videoWidth;
-      snap.height = video.videoHeight;
+      snap.width = video.videoWidth; snap.height = video.videoHeight;
       const ctx = snap.getContext("2d");
       ctx.drawImage(video, 0, 0);
 
       const tongueRatio = getTongueRatio(snap);
       if (tongueRatio < 0.15) {
         Swal.fire("⚠️ 舌頭比例過低", "請確保舌頭完整位於輪廓內再拍照", "warning");
-        snapshotBlob = null;
-        return;
+        snapshotBlob = null; return;
       }
 
       snap.toBlob(blob => {
         snapshotBlob = blob;
-
         Swal.fire({
           title: "📸 拍照完成",
           text: "是否上傳並查看？",
@@ -151,12 +125,25 @@
             fetch("/upload", { method: "POST", body: formData })
               .then(res => res.json())
               .then(data => {
+                let fiveRegionsTable = "<table border='1'><tr><th>區域</th><th>L</th><th>A</th><th>B</th><th>推論</th></tr>";
+                if (data["五區分析"] && !data["五區分析"].error) {
+                  Object.keys(data["五區分析"]).forEach(region => {
+                    const r = data["五區分析"][region];
+                    const avg_lab = r.avg_lab.map(v => Math.round(v));
+                    fiveRegionsTable += `<tr><td>${r.name}</td><td>${avg_lab[0]}</td><td>${avg_lab[1]}</td><td>${avg_lab[2]}</td><td>${r.diagnosis}</td></tr>`;
+                  });
+                } else {
+                  fiveRegionsTable += "<tr><td colspan='5'>無法判斷</td></tr>";
+                }
+                fiveRegionsTable += "</table>";
+
                 Swal.fire({
                   title: "🧠 中醫判讀結果",
                   html: `
                     <b>舌苔主色：</b> ${data["舌苔主色"]}<br>
                     <b>推論：</b> ${data["中醫推論"]}<br>
-                    <b>建議：</b> ${data["醫療建議"]}
+                    <b>建議：</b> ${data["醫療建議"]}<br><br>
+                    ${fiveRegionsTable}
                   `,
                   icon: "info",
                   confirmButtonText: "查看歷史照片"
