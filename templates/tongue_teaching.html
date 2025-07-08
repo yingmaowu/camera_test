@@ -35,8 +35,8 @@
     .region {
       position: absolute;
       cursor: pointer;
-      background: rgba(0,123,255,0.2);
-      border: 2px solid #007bff;
+      background: rgba(255, 228, 196, 0.7); /* 肉色 */
+      border: 2px solid #e0a96d;
       border-radius: 4px;
       text-align: center;
       line-height: 1.2;
@@ -65,24 +65,24 @@
   <div id="tongueWrapper">
     <img id="tongueImg" src="{{ url_for('static', filename='overlay.png') }}" alt="舌頭示意圖">
 
-    <!-- 舌根 (最上層) -->
-    <div class="region" style="top: 10%; left: 35%; width: 30%; height: 10%;"
+    <!-- 舌根 (略下移) -->
+    <div class="region" style="top: 15%; left: 35%; width: 30%; height: 10%;"
       onclick="showInfo('舌根', '腎功能', `淡紅：腎功能正常<br>黑灰：腎氣不足<br>苔厚膩：濕熱內蘊`, '建議：作息規律，早睡保暖，避免過度勞累')">舌根</div>
 
-    <!-- 舌中 (中間) -->
-    <div class="region" style="top: 30%; left: 35%; width: 30%; height: 15%;"
+    <!-- 舌中 (下移多一倍) -->
+    <div class="region" style="top: 50%; left: 35%; width: 30%; height: 15%;"
       onclick="showInfo('舌中', '脾胃功能', `淡紅：脾胃健運<br>苔厚黃：脾胃濕熱<br>苔白滑：脾胃虛寒`, '建議：避免過食油炸寒涼，飲食均衡')">舌中</div>
 
-    <!-- 舌邊 左 -->
-    <div class="region" style="top: 50%; left: 10%; width: 20%; height: 20%;"
+    <!-- 舌邊 左 (上移+向中間) -->
+    <div class="region" style="top: 40%; left: 20%; width: 20%; height: 20%;"
       onclick="showInfo('舌邊(左)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
 
-    <!-- 舌邊 右 -->
-    <div class="region" style="top: 50%; left: 70%; width: 20%; height: 20%;"
+    <!-- 舌邊 右 (上移+向中間) -->
+    <div class="region" style="top: 40%; left: 60%; width: 20%; height: 20%;"
       onclick="showInfo('舌邊(右)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
 
-    <!-- 舌尖 (最下層) -->
-    <div class="region" style="top: 80%; left: 40%; width: 20%; height: 10%;"
+    <!-- 舌尖 (上移略) -->
+    <div class="region" style="top: 75%; left: 40%; width: 20%; height: 10%;"
       onclick="showInfo('舌尖', '心肺功能', `紅潤：心肺功能正常<br>偏紅：火氣旺盛<br>暗淡：血虛氣弱`, '建議：維持規律作息，多喝溫水')">舌尖</div>
   </div>
 
@@ -93,7 +93,7 @@
     function showInfo(region, organ, info, advice) {
       Swal.fire({
         title: `${region} (${organ})`,
-        html: `<div style="text-align:left">${info}<br><br><b>${advice}</b></div>`,
+        html: `<div style="text-align:left;font-size:1rem;line-height:1.5;">${info}<br><br><b>${advice}</b></div>`,
         icon: "info",
         confirmButtonText: "了解"
       });
