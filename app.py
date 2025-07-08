@@ -33,6 +33,10 @@ def home():
 def teaching():
     return render_template("teaching.html")
 
+@app.route("/tongue_teaching")
+def tongue_teaching():
+    return render_template("tongue_teaching.html")
+
 @app.route("/id")
 def id_input():
     return render_template("id.html")
