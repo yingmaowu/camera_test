@@ -6,47 +6,94 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { text-align: center; font-family: "Segoe UI", sans-serif; background: #f0f0f0; margin: 0; }
-    h2 { margin: 1rem; }
-    #tongueWrapper { position: relative; display: inline-block; }
-    #tongueImg { width: 300px; max-width: 90vw; }
-    .region {
-      position: absolute; cursor: pointer;
-      background: rgba(255,0,0,0.2); border: 1px solid red; border-radius: 4px;
+    body {
+      text-align: center;
+      font-family: "Segoe UI", sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 1rem;
     }
-    button { margin: 1rem; padding: 0.6rem 1.2rem; font-size: 1rem;
-      background: #4a90e2; color: white; border: none; border-radius: 6px; cursor: pointer; }
+    h2 {
+      margin: 1rem;
+      font-weight: 600;
+      font-size: 1.5rem;
+    }
+    #tongueWrapper {
+      position: relative;
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      background: white;
+      padding: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    #tongueImg {
+      width: 300px;
+      max-width: 90vw;
+      border-radius: 10px;
+    }
+    .region {
+      position: absolute;
+      cursor: pointer;
+      background: rgba(0,123,255,0.2);
+      border: 2px solid #007bff;
+      border-radius: 4px;
+      text-align: center;
+      line-height: 1.2;
+      font-weight: bold;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button {
+      margin: 1rem;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      background: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
     button:hover { background-color: #357ABD; }
   </style>
 </head>
 <body>
   <h2>舌象分類教學</h2>
+
   <div id="tongueWrapper">
     <img id="tongueImg" src="{{ url_for('static', filename='overlay.png') }}" alt="舌頭示意圖">
-    <!-- 舌尖 -->
-    <div class="region" style="top: 20%; left: 40%; width: 20%; height: 10%;"
-      onclick="showInfo('舌尖', '心肺功能', '紅潤：心肺正常；偏紅：火氣旺；暗淡：血虛氣弱')"></div>
-    <!-- 舌中 -->
-    <div class="region" style="top: 40%; left: 35%; width: 30%; height: 15%;"
-      onclick="showInfo('舌中', '脾胃功能', '淡紅：脾胃健運；苔厚黃：脾胃濕熱；苔白滑：脾胃虛寒')"></div>
+
+    <!-- 舌根 (最上層) -->
+    <div class="region" style="top: 10%; left: 35%; width: 30%; height: 10%;"
+      onclick="showInfo('舌根', '腎功能', `淡紅：腎功能正常<br>黑灰：腎氣不足<br>苔厚膩：濕熱內蘊`, '建議：作息規律，早睡保暖，避免過度勞累')">舌根</div>
+
+    <!-- 舌中 (中間) -->
+    <div class="region" style="top: 30%; left: 35%; width: 30%; height: 15%;"
+      onclick="showInfo('舌中', '脾胃功能', `淡紅：脾胃健運<br>苔厚黃：脾胃濕熱<br>苔白滑：脾胃虛寒`, '建議：避免過食油炸寒涼，飲食均衡')">舌中</div>
+
     <!-- 舌邊 左 -->
-    <div class="region" style="top: 30%; left: 15%; width: 15%; height: 20%;"
-      onclick="showInfo('舌邊(左)', '肝膽功能', '正常：淡紅；紅紫：肝火；齒痕：脾虛')"></div>
+    <div class="region" style="top: 50%; left: 10%; width: 20%; height: 20%;"
+      onclick="showInfo('舌邊(左)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
+
     <!-- 舌邊 右 -->
-    <div class="region" style="top: 30%; left: 70%; width: 15%; height: 20%;"
-      onclick="showInfo('舌邊(右)', '肝膽功能', '正常：淡紅；紅紫：肝火；齒痕：脾虛')"></div>
-    <!-- 舌根 -->
-    <div class="region" style="top: 65%; left: 35%; width: 30%; height: 15%;"
-      onclick="showInfo('舌根', '腎功能', '正常：淡紅；黑灰：腎氣不足；苔厚膩：濕熱內蘊')"></div>
+    <div class="region" style="top: 50%; left: 70%; width: 20%; height: 20%;"
+      onclick="showInfo('舌邊(右)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
+
+    <!-- 舌尖 (最下層) -->
+    <div class="region" style="top: 80%; left: 40%; width: 20%; height: 10%;"
+      onclick="showInfo('舌尖', '心肺功能', `紅潤：心肺功能正常<br>偏紅：火氣旺盛<br>暗淡：血虛氣弱`, '建議：維持規律作息，多喝溫水')">舌尖</div>
   </div>
+
   <br>
   <button onclick="history.back()">上一頁</button>
 
   <script>
-    function showInfo(region, organ, info) {
+    function showInfo(region, organ, info, advice) {
       Swal.fire({
         title: `${region} (${organ})`,
-        html: info,
+        html: `<div style="text-align:left">${info}<br><br><b>${advice}</b></div>`,
         icon: "info",
         confirmButtonText: "了解"
       });
