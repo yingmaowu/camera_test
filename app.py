@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, request, jsonify
 import os
 import datetime
@@ -39,23 +40,22 @@ def tongue_teaching():
 
 @app.route("/id")
 def id_input():
-    return render_template("id.html")
+    next_page = request.args.get("next", "index")
+    return render_template("id.html", next_page=next_page)
 
 @app.route("/index")
 def index():
-    return render_template("index.html")
-
-@app.route("/history")
-def history():
-    return render_template("history.html")
+    patient_id = request.args.get("patient", "unknown")
+    return render_template("index.html", patient_id=patient_id)
 
 @app.route("/upload", methods=["POST"])
 def upload_image():
-    if 'image' not in request.files:
+    if 'image' not in request.files and 'image' not in request.form:
         return "No image uploaded", 400
 
-    image = request.files['image']
-    patient_id = request.form.get('patient_id', '').strip()
+    image = request.files.get('image') or request.form.get('image')
+    patient_id = request.form.get('patient_id', 'unknown').strip()
+
     if not patient_id:
         return "Missing patient ID", 400
 
@@ -88,11 +88,13 @@ def upload_image():
             "five_regions": five_regions,
             "timestamp": datetime.datetime.utcnow()
         }
-        records_collection.insert_one(record)
+        inserted_id = records_collection.insert_one(record).inserted_id
 
         print(f"✅ 已儲存影像：{image_url}")
 
         return jsonify({
+            "success": True,
+            "id": str(inserted_id),
             "image_url": image_url,
             "舌苔主色": main_color,
             "中醫推論": comment,
@@ -105,6 +107,11 @@ def upload_image():
         print(f"❌ 上傳處理失敗：{e}")
         return jsonify({"error": "上傳失敗", "detail": str(e)}), 500
 
+@app.route("/history")
+def history():
+    patient_id = request.args.get("patient", "unknown")
+    return render_template("history.html", patient_id=patient_id)
+
 @app.route("/history_data", methods=["GET"])
 def get_history_data():
     patient_id = request.args.get("patient", "").strip()
@@ -115,6 +122,7 @@ def get_history_data():
         records = list(records_collection.find({"patient_id": patient_id}).sort("timestamp", -1))
         for r in records:
             r["_id"] = str(r["_id"])
+            r["timestamp"] = r["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
         return jsonify(records)
     except Exception as e:
         return jsonify({"error": "查詢失敗", "detail": str(e)}), 500
@@ -127,8 +135,11 @@ def delete_record():
         return jsonify({"error": "Missing ID"}), 400
 
     try:
-        result = records_collection.delete_one({"_id": ObjectId(record_id)})
-        if result.deleted_count == 1:
+        record = records_collection.find_one({"_id": ObjectId(record_id)})
+        if record:
+            public_id = record["image_url"].split("/")[-1].split(".")[0]
+            cloudinary.uploader.destroy(public_id)
+            records_collection.delete_one({"_id": ObjectId(record_id)})
             return jsonify({"success": True})
         else:
             return jsonify({"error": "Record not found"}), 404
