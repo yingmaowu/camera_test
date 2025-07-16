@@ -13,7 +13,7 @@
     #photoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 20px; max-width: 1000px; margin: 2rem auto; }
     .photo-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
     .photo-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
-    .photo-card img { width: 100%; display: block; object-fit: cover; }
+    .photo-card img { width: 100%; height: auto; display: block; object-fit: cover; aspect-ratio: 3/4; }
     .timestamp { padding: 0.4rem; font-size: 0.9rem; color: #666; }
     table { margin: auto; border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 0.4rem; }
@@ -52,13 +52,9 @@
               table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
             });
             table += "</table>";
-
             Swal.fire({
               title: "🧠 判讀結果",
-              html: `
-                <b>舌苔主色：</b> ${record.main_color}<br><br>
-                ${table}
-              `,
+              html: `<b>舌苔主色：</b> ${record.main_color}<br><br>${table}`,
               confirmButtonText: "關閉"
             });
           };
