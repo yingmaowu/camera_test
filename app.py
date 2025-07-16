@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, jsonify
 import os
 import datetime
@@ -9,7 +8,8 @@ import cloudinary.uploader
 import tempfile
 import io
 from bson import ObjectId
-from color_analysis import analyze_image_color, analyze_tongue_regions
+from color_analysis import analyze_image_color
+from color_analysis_overlay import analyze_tongue_regions_with_overlay
 
 load_dotenv()
 app = Flask(__name__)
@@ -29,14 +29,6 @@ cloudinary.config(
 @app.route("/")
 def home():
     return render_template("home.html")
-
-@app.route("/teaching")
-def teaching():
-    return render_template("teaching.html")
-
-@app.route("/tongue_teaching")
-def tongue_teaching():
-    return render_template("tongue_teaching.html")
 
 @app.route("/id")
 def id_input():
@@ -69,13 +61,16 @@ def upload_image():
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # 進行舌苔主色與五區分析
+        # 進行主色與五區分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
-            main_color, comment, advice, rgb = analyze_image_color(tmp.name)
-            five_regions = analyze_tongue_regions(tmp.name)
-            os.remove(tmp.name)
+            tmp_path = tmp.name
+
+        main_color, comment, advice, rgb = analyze_image_color(tmp_path)
+        five_regions = analyze_tongue_regions_with_overlay(tmp_path)
+
+        os.remove(tmp_path)
 
         # 寫入 MongoDB
         record = {
@@ -148,5 +143,5 @@ def delete_record():
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("✅ Flask app running with MongoDB, Cloudinary, and tongue region analysis integration.")
+    print("✅ Flask app running with integrated tongue color and region analysis.")
     app.run(host="0.0.0.0", port=port)
