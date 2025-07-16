@@ -45,23 +45,28 @@
           time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
           card.appendChild(img);
           card.appendChild(time);
+
           card.onclick = () => {
             let table = "<table><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
-            Object.keys(record.five_regions).forEach(region => {
-              const r = record.five_regions[region];
-              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
-            });
+            if (record.five_regions) {
+              Object.values(record.five_regions).forEach(r => {
+                table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
+              });
+            } else {
+              table += "<tr><td colspan='4'>無五區診斷資料</td></tr>";
+            }
             table += "</table>";
 
             Swal.fire({
               title: "🧠 判讀結果",
               html: `
-                <b>舌苔主色：</b> ${record.main_color}<br><br>
+                <b>舌苔主色：</b> ${record.main_color || "無資料"}<br><br>
                 ${table}
               `,
               confirmButtonText: "關閉"
             });
           };
+
           photoGrid.appendChild(card);
         });
       });
