@@ -90,16 +90,15 @@
     const canvas = document.getElementById('canvas') || document.createElement('canvas');
     const context = canvas.getContext('2d');
     const captureBtn = document.getElementById('captureBtn');
-
-    let capturedBlob = null; // 儲存預先擷取的照片
+    let capturedBlob = null;
 
     const urlParams = new URLSearchParams(window.location.search);
     const patientId = urlParams.get("patient") || "unknown";
 
-    // 修復返回後無法啟用相機問題
+    // 解決返回上一頁相機黑畫面問題
     window.addEventListener('pageshow', function (event) {
       if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-        window.location.reload();  // 強制重新整理頁面
+        window.location.reload();
       }
     });
 
@@ -120,8 +119,18 @@
       });
 
     function captureImage() {
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      context.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+      const vw = video.videoWidth;
+      const vh = video.videoHeight;
+      const scale = 1.5;
+      const offsetX = -0.25;
+
+      const sx = vw * offsetX;
+      const sy = 0;
+      const sw = vw * scale;
+      const sh = vh;
+
+      context.drawImage(video, sx, sy, sw, sh, 0, 0, vw, vh);
+      context.drawImage(overlay, 0, 0, vw, vh);
       return new Promise(resolve => {
         canvas.toBlob(blob => {
           capturedBlob = blob;
@@ -131,7 +140,7 @@
     }
 
     captureBtn.addEventListener("click", async () => {
-      await captureImage(); // 先擷取
+      await captureImage();
       Swal.fire({
         title: "確定要上傳這張照片嗎？",
         icon: "question",
@@ -165,6 +174,6 @@
       });
     });
   </script>
-  </body>
-  
+</body>
+
 </html>
