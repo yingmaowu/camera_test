@@ -69,6 +69,7 @@ def upload_image():
 
         main_color, comment, advice, rgb = analyze_image_color(tmp_path)
         five_regions = analyze_tongue_regions_with_overlay(tmp_path)
+        print('🧪 五區分析結果:', five_regions)
 
         os.remove(tmp_path)
 
