@@ -1,84 +1,111 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
-  <title>舌苔辨識相機</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <meta charset="UTF-8">
+  <title>舌苔辨識</title>
   <style>
-    body { margin: 0; font-family: sans-serif; background: #f0f0f0; text-align: center; }
-    h2 { margin-top: 1rem; }
-    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; aspect-ratio: 3/4; background: black; }
-    video { width: 150%; transform: translateX(-25%); object-fit: cover; border-radius: 10px; }
-    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; }
-    button { margin: 1rem 0.5rem; padding: 0.6rem 1.2rem; font-size: 1.1rem; border: none; border-radius: 6px; background: #4a90e2; color: white; cursor: pointer; }
-    button:hover { background-color: #357ABD; }
+    body {
+      font-family: sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 0;
+    }
+    #camera-container {
+      position: relative;
+      width: 100%;
+      max-width: 480px;
+      margin: auto;
+    }
+    video, #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: auto;
+    }
+    #canvas {
+      display: none;
+    }
+    #confirm-box {
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 16px;
+    }
   </style>
 </head>
 <body>
-  <h2>舌苔辨識相機</h2>
-  <div id="videoWrapper">
-    <video id="camera" autoplay playsinline muted></video>
-    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay">
+  <h2>請對準舌頭後按下拍照</h2>
+
+  <div id="camera-container">
+    <video id="video" autoplay playsinline></video>
+    <img id="overlay" src="/static/overlay.png" alt="overlay">
+    <canvas id="canvas"></canvas>
   </div>
-  <div>
-    <button id="captureBtn">拍照</button>
-    <button id="historyBtn">查看歷史照片</button>
-    <button onclick="history.back()">上一頁</button>
+
+  <div id="confirm-box">
+    <button id="capture-btn">📸 拍照上傳</button>
   </div>
 
   <script>
-    const video = document.getElementById("camera");
-    const captureBtn = document.getElementById("captureBtn");
-    const historyBtn = document.getElementById("historyBtn");
-    const overlay = document.getElementById("overlay");
-    const patientId = new URLSearchParams(window.location.search).get("patient");
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const canvas = document.getElementById('canvas');
+    const context = canvas.getContext('2d');
+    const captureBtn = document.getElementById('capture-btn');
 
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-      .then(stream => { video.srcObject = stream; video.onloadedmetadata = () => video.play(); })
-      .catch(err => { Swal.fire("❌ 相機啟動失敗", err.message, "error"); });
+    // 啟用相機
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => {
+        video.srcObject = stream;
+        return new Promise(resolve => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+      })
+      .then(() => {
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+      })
+      .catch(err => {
+        alert("無法啟用相機：" + err.message);
+      });
 
-    captureBtn.addEventListener("click", () => {
-      const snap = document.createElement("canvas");
-      snap.width = video.videoWidth; snap.height = video.videoHeight;
-      const ctx = snap.getContext("2d");
-      ctx.drawImage(video, 0, 0, snap.width, snap.height);
-      ctx.drawImage(overlay, 0, 0, snap.width, snap.height);
+    // 拍照按鈕事件
+    captureBtn.addEventListener('click', () => {
+      const confirmUpload = confirm("確定要上傳這張舌頭照片嗎？");
+      if (!confirmUpload) return;
 
-      snap.toBlob(blob => {
+      // 擷取畫面：video + overlay 疊圖
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      context.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(blob => {
         const formData = new FormData();
-        formData.append("image", blob);
-        formData.append("patient_id", patientId);
-        fetch("/upload", { method: "POST", body: formData })
-          .then(res => res.json())
-          .then(data => {
-            let table = "<table border='1'><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
-            Object.keys(data["五區分析"]).forEach(region => {
-              const r = data["五區分析"][region];
-              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
-            });
-            table += "</table>";
+        const urlParams = new URLSearchParams(window.location.search);
+        const patientId = urlParams.get('patient') || 'unknown';
+        formData.append('image', blob, 'tongue.jpg');
+        formData.append('patient_id', patientId);
 
-            Swal.fire({
-              title: "🧠 判讀結果",
-              html: `
-                <b>舌苔主色：</b> ${data["舌苔主色"]}<br><br>
-                ${table}
-              `,
-              icon: "info",
-              confirmButtonText: "查看歷史照片"
-            }).then(() => {
-              window.location.href = `/history?patient=${patientId}`;
-            });
-          })
-          .catch(err => {
-            Swal.fire("❌ 上傳失敗", err.message, "error");
-          });
-      }, "image/jpeg");
-    });
-
-    historyBtn.addEventListener("click", () => {
-      window.location.href = `/history?patient=${patientId}`;
+        fetch('/upload', {
+          method: 'POST',
+          body: formData
+        })
+        .then(response => {
+          if (response.ok) {
+            alert("上傳成功！即將跳轉至健康紀錄。");
+            window.location.href = `/history?patient=${patientId}`;
+          } else {
+            alert("上傳失敗，請稍後再試。");
+          }
+        })
+        .catch(err => {
+          alert("錯誤：" + err.message);
+        });
+      }, 'image/jpeg');
     });
   </script>
 </body>
