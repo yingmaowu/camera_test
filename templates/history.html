@@ -1,70 +1,119 @@
 <!DOCTYPE html>
 <html lang="zh-Hant">
 <head>
-  <meta charset="UTF-8" />
+  <meta charset="UTF-8">
   <title>歷史照片紀錄</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background: #f0f0f0; text-align: center; margin: 0; padding: 2rem; }
-    h2 { margin-bottom: 1rem; }
-    button { font-size: 1rem; padding: 0.5rem 1.2rem; border: none; border-radius: 8px; background-color: #4a90e2; color: white; cursor: pointer; margin: 0.5rem; }
-    button:hover { background-color: #357ABD; }
-    #photoGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 20px; max-width: 1000px; margin: 2rem auto; }
-    .photo-card { background: #fff; border-radius: 10px; overflow: hidden; box-shadow: 0 4px 10px rgba(0,0,0,0.1); transition: transform 0.3s ease, box-shadow 0.3s ease; cursor: pointer; }
-    .photo-card:hover { transform: translateY(-5px); box-shadow: 0 8px 20px rgba(0,0,0,0.2); }
-    .photo-card img { width: 100%; display: block; object-fit: cover; }
-    .timestamp { padding: 0.4rem; font-size: 0.9rem; color: #666; }
-    table { margin: auto; border-collapse: collapse; }
-    th, td { border: 1px solid #ccc; padding: 0.4rem; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f0f0f0;
+      text-align: center;
+      margin: 0;
+      padding: 2rem;
+    }
+    h2 {
+      margin-bottom: 1rem;
+    }
+    button {
+      font-size: 1rem;
+      padding: 0.5rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      background-color: #4a90e2;
+      color: white;
+      cursor: pointer;
+      margin: 0.5rem;
+    }
+    button:hover {
+      background-color: #357ABD;
+    }
+    #photoGrid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 20px;
+      max-width: 1000px;
+      margin: 2rem auto;
+    }
+    .photo-card {
+      background: #fff;
+      border-radius: 10px;
+      overflow: hidden;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      cursor: pointer;
+    }
+    .photo-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 6px 14px rgba(0,0,0,0.15);
+    }
   </style>
 </head>
 <body>
-  <h2>📁 歷史照片紀錄</h2>
-  <button onclick="history.back()">上一頁</button>
-  <div id="photoGrid"></div>
+  <h2>📂 舌苔健康紀錄</h2>
+
+  <div id="photoGrid">
+    {% for record in records %}
+    <div class="photo-card" onclick="showDetails({{ record|tojson }})">
+      <div style="position: relative; width: 100%; aspect-ratio: 3/4; background: black; overflow: hidden;">
+        <img src="{{ record.image_url }}" alt="拍攝圖"
+             style="width: 150%; transform: translateX(-25%); height: 100%; object-fit: cover;" />
+      </div>
+      <p>{{ record.timestamp }}</p>
+      <button onclick="event.stopPropagation(); deleteRecord('{{ record._id }}')">刪除</button>
+    </div>
+    {% endfor %}
+  </div>
 
   <script>
-    const photoGrid = document.getElementById("photoGrid");
-    const patientId = new URLSearchParams(window.location.search).get("patient") || "";
+    function showDetails(record) {
+      let html = "<table style='width:100%;text-align:left'>";
+      html += "<tr><th>主色</th><td>" + record.main_color + "</td></tr>";
+      html += "<tr><th>中醫推論</th><td>" + record.comment + "</td></tr>";
+      html += "<tr><th>建議</th><td>" + record.advice + "</td></tr>";
 
-    fetch(`/history_data?patient=${patientId}`)
-      .then(res => res.json())
-      .then(records => {
-        if (!records.length) {
-          photoGrid.innerHTML = "<p>尚無照片</p>";
-          return;
+      if (record.five_regions) {
+        html += "<tr><th colspan='2'>五區分析</th></tr>";
+        for (let region of record.five_regions) {
+          html += "<tr><td>" + region.region + "</td><td>" + region.category + "｜" + region.advice + "</td></tr>";
         }
-        records.forEach(record => {
-          const card = document.createElement("div");
-          card.className = "photo-card";
-          const img = document.createElement("img");
-          img.src = record.image_url;
-          const time = document.createElement("div");
-          time.className = "timestamp";
-          time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
-          card.appendChild(img);
-          card.appendChild(time);
-          card.onclick = () => {
-            let table = "<table><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
-            Object.keys(record.five_regions).forEach(region => {
-              const r = record.five_regions[region];
-              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
-            });
-            table += "</table>";
+      }
 
-            Swal.fire({
-              title: "🧠 判讀結果",
-              html: `
-                <b>舌苔主色：</b> ${record.main_color}<br><br>
-                ${table}
-              `,
-              confirmButtonText: "關閉"
-            });
-          };
-          photoGrid.appendChild(card);
-        });
+      html += "</table>";
+
+      Swal.fire({
+        title: "分析結果",
+        html: html,
+        width: "600px"
       });
+    }
+
+    function deleteRecord(id) {
+      Swal.fire({
+        title: "確認刪除這筆紀錄？",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "刪除",
+        cancelButtonText: "取消"
+      }).then(result => {
+        if (result.isConfirmed) {
+          fetch("/delete_record", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ id })
+          })
+          .then(res => res.json())
+          .then(data => {
+            if (data.success) {
+              Swal.fire("✅ 已刪除", "", "success").then(() => location.reload());
+            } else {
+              Swal.fire("❌ 刪除失敗", data.error || "請稍後再試", "error");
+            }
+          });
+        }
+      });
+    }
   </script>
 </body>
 </html>
