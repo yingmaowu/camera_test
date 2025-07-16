@@ -1,7 +1,16 @@
+
 import cv2
 import numpy as np
 
-# 舌苔五區對應中醫理論與建議
+# 定義顏色對應區域（OpenCV為BGR格式）
+COLOR_TO_REGION = {
+    (255, 28, 7): "脾胃",      # #071CFF 中央藍色
+    (217, 217, 217): "肝膽",   # #D9D9D9 左右灰色
+    (35, 221, 59): "腎",       # #3BDD23 上方亮綠色
+    (7, 7, 94): "心肺"         # #5E0707 下方咖啡紅
+}
+
+# 對應理論與建議
 REGION_THEORY = {
     "心肺": "舌尖代表心肺功能，紅潤正常，偏紅可能火氣旺。",
     "肝膽": "舌邊屬肝膽，紅紫為肝火，齒痕為脾虛。",
@@ -16,15 +25,6 @@ REGION_ADVICE_RULE = {
     "腎": {"偏黑灰": "腎氣不足，注意保暖，早睡避免疲勞。", "其他": "作息規律，避免久坐。"}
 }
 
-# 定義 overlay.png 中的五區顏色對應（BGR）
-COLOR_TO_REGION = {
-    (255, 0, 0): "腎",         # 藍色區塊
-    (0, 255, 0): "脾胃",       # 綠色區塊
-    (0, 255, 255): "心肺",     # 亮綠色（黃色）
-    (128, 128, 128): "肝膽"    # 灰色區塊（左右皆視為肝膽）
-}
-
-# LAB 判斷規則
 def diagnose_region(L, A, B):
     if A > 145 and B < 150 and L > 120:
         return "健康"
@@ -46,15 +46,15 @@ def analyze_tongue_regions_with_overlay(photo_path, overlay_path="static/TongueO
     overlay_img = cv2.imread(overlay_path)
 
     if tongue_img is None or overlay_img is None:
-        raise FileNotFoundError("❌ 無法讀取圖像或 overlay.png")
+        raise FileNotFoundError("圖像或 overlay 讀取失敗")
 
     if tongue_img.shape != overlay_img.shape:
         overlay_img = cv2.resize(overlay_img, (tongue_img.shape[1], tongue_img.shape[0]))
 
-    region_dict = {}
+    result = []
 
-    for color_bgr, region_name in COLOR_TO_REGION.items():
-        mask = cv2.inRange(overlay_img, np.array(color_bgr), np.array(color_bgr))
+    for bgr_color, region in COLOR_TO_REGION.items():
+        mask = cv2.inRange(overlay_img, np.array(bgr_color), np.array(bgr_color))
         mask_indices = np.where(mask == 255)
 
         if len(mask_indices[0]) == 0:
@@ -66,14 +66,14 @@ def analyze_tongue_regions_with_overlay(photo_path, overlay_path="static/TongueO
         L, A, B = avg_lab
 
         diagnosis = diagnose_region(L, A, B)
-        theory = REGION_THEORY.get(region_name, "無理論")
-        advice = REGION_ADVICE_RULE.get(region_name, {}).get(diagnosis, REGION_ADVICE_RULE.get(region_name, {}).get("其他", "保持良好作息"))
+        theory = REGION_THEORY.get(region, "無理論")
+        advice = REGION_ADVICE_RULE.get(region, {}).get(diagnosis, REGION_ADVICE_RULE[region].get("其他", "保持良好作息"))
 
-        region_dict[region_name] = {
-            "區域": region_name,
+        result.append({
+            "區域": region,
             "診斷": diagnosis,
             "理論": theory,
             "建議": advice
-        }
+        })
 
-    return region_dict
+    return result
