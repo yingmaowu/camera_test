@@ -159,8 +159,8 @@ def show_practice():
     session["explanation"] = question["explanation"]
     return render_template("practice.html", question=question)
 
-@app.route("/submit_answer", methods=["POST"])
-def submit_answer():
+@app.route("/submit_practice_answer", methods=["POST"])
+def submit_practice_answer():
     user_answer = request.form.get("answer")
     correct_answer = session.get("correct_answer")
     explanation = session.get("explanation")
@@ -231,7 +231,7 @@ def practice():
     })
 
 @app.route("/submit_answer", methods=["POST"])
-def submit_answer():
+def submit_practice_answer():
     user_answer = request.form.get("answer")
     correct_answer = session.get("answer")
     is_correct = user_answer == correct_answer
