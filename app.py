@@ -154,7 +154,7 @@ def tongue_teaching():
 
 @app.route("/practice")
 def show_practice():
-    question = mongo_db["practice_questions"].aggregate([{"$sample": {"size": 1}}]).next()
+    question = mongo_db["practice_questions"].aggregate([{ "$sample": {"size": 1} }]).next()
     session["correct_answer"] = question["correct_answer"]
     session["explanation"] = question["explanation"]
     return render_template("practice.html", question=question)
@@ -173,7 +173,7 @@ def submit_practice_answer():
 @app.route("/practice_zone")
 def practice_zone():
     try:
-        question = mongo_db["zone_questions"].aggregate([{"$sample": {"size": 1}}]).next()
+        question = mongo_db["zone_questions"].aggregate([{ "$sample": {"size": 1} }]).next()
     except StopIteration:
         return "No zone questions available."
     session["zone_correct"] = {
@@ -201,6 +201,13 @@ def submit_zone_answer():
         for zone in correct
     }
     return render_template("result_zone.html", result=result)
+
+# 自動將 Cloudinary 圖片寫入 MongoDB 題庫
+try:
+    from mongo_insert_questions import generate_questions_once
+    generate_questions_once()
+except Exception as e:
+    print(f"⚠️ 自動題庫寫入失敗：{e}")
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
