@@ -245,7 +245,34 @@ def insert_sample_zone_question():
     }
     mongo_db["zone_questions"].insert_one(question)
     return "✅ 五區題已插入"
-    
+
+@app.route("/insert_batch_practice")
+def insert_batch_practice():
+    folder = "home"
+    all_tags = ["白苔", "黃苔", "紅紫舌無苔", "灰黑苔"]
+    count = 0
+
+    for tag in all_tags:
+        res = cloudinary.Search() \
+            .expression(f"folder={folder}/{tag}") \
+            .sort_by("public_id", "asc") \
+            .max_results(100) \
+            .execute()
+
+        for img in res["resources"]:
+            url = img["secure_url"]
+            question = {
+                "image_url": url,
+                "question": "請判斷此舌頭的主要顏色為？",
+                "choices": all_tags,
+                "correct_answer": tag,
+                "explanation": f"{tag} 為中醫舌診常見舌象之一"
+            }
+            mongo_db["practice_questions"].insert_one(question)
+            count += 1
+
+    return f"✅ 已成功新增 {count} 筆主色練習題！"
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
