@@ -146,3 +146,10 @@ if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     print("✅ Flask app running with integrated tongue color and region analysis.")
     app.run(host="0.0.0.0", port=port)
+@app.route("/teaching")
+def teaching():
+    return render_template("teaching.html")
+
+@app.route("/tongue_teaching")
+def tongue_teaching():
+    return render_template("tongue_teaching.html")
