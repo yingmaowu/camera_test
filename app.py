@@ -63,7 +63,7 @@ def upload_image():
         result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = result["secure_url"]
 
-        # 進行主色與五區分析
+        # 主色與五區分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
@@ -75,7 +75,7 @@ def upload_image():
 
         os.remove(tmp_path)
 
-        # 寫入 MongoDB
+        # 儲存紀錄至 MongoDB
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
@@ -201,46 +201,6 @@ def submit_zone_answer():
         for zone in correct
     }
     return render_template("result_zone.html", result=result)
-
-
-@app.route("/practice")
-def practice():
-    questions = []
-    for folder, label in {
-        "white": "白苔",
-        "black": "灰黑苔",
-        "red": "紅紫舌無苔",
-        "yellow": "黃苔"
-    }.items():
-        resources = cloudinary.api.resources(type="upload", prefix=f"home/{label}", max_results=100)
-        if resources['resources']:
-            questions.append({
-                "url": random.choice(resources['resources'])['secure_url'],
-                "label": label
-            })
-
-    question = random.choice(questions)
-    choices = ["白苔", "灰黑苔", "紅紫舌無苔", "黃苔"]
-    random.shuffle(choices)
-    session['answer'] = question['label']
-
-    return render_template("practice.html", question={
-        "image_url": question['url'],
-        "question": "這是哪一種舌象？",
-        "choices": choices
-    })
-
-@app.route("/submit_answer", methods=["POST"])
-def submit_practice_answer():
-    user_answer = request.form.get("answer")
-    correct_answer = session.get("answer")
-    is_correct = user_answer == correct_answer
-
-    explanation = f"這張圖來自分類：{correct_answer}。請注意舌苔顏色與質地的差異。"
-    return render_template("result.html", user_answer=user_answer,
-                           correct_answer=correct_answer,
-                           is_correct=is_correct,
-                           explanation=explanation)
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
