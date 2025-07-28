@@ -152,18 +152,6 @@ def teaching():
 def tongue_teaching():
     return render_template("tongue_teaching.html")
 
-@app.route("/insert_sample_question")
-def insert_sample_question():
-    question = {
-        "image_url": "https://res.cloudinary.com/demo/image/upload/v1620000000/sample_tongue.jpg",
-        "question": "請判斷此舌頭的主要顏色為？",
-        "choices": ["白苔", "黃苔", "紅舌", "黑灰"],
-        "correct_answer": "黃苔",
-        "explanation": "黃苔多見於內熱證，可能為脾胃濕熱"
-    }
-    mongo_db["practice_questions"].insert_one(question)
-    return "Sample question inserted!"
-
 @app.route("/practice")
 def show_practice():
     question = mongo_db["practice_questions"].aggregate([{"$sample": {"size": 1}}]).next()
@@ -184,7 +172,10 @@ def submit_answer():
 
 @app.route("/practice_zone")
 def practice_zone():
-    question = mongo_db["zone_questions"].aggregate([{"$sample": {"size": 1}}]).next()
+    try:
+        question = mongo_db["zone_questions"].aggregate([{"$sample": {"size": 1}}]).next()
+    except StopIteration:
+        return "No zone questions available."
     session["zone_correct"] = {
         zone: data["correct_answer"]
         for zone, data in question["zones"].items()
@@ -210,69 +201,6 @@ def submit_zone_answer():
         for zone in correct
     }
     return render_template("result_zone.html", result=result)
-    
-@app.route("/insert_sample_zone_question")
-def insert_sample_zone_question():
-    question = {
-        "image_url": "https://res.cloudinary.com/dzrfr0ays/image/upload/v1753696609/tongue/%E6%B8%AC%E8%A9%A6/b8fosjjyljlkykzgcbwq.jpg",
-        "question": "請根據下圖舌頭進行五區診斷：",
-        "zones": {
-            "腎": {
-                "question": "腎區判斷為？",
-                "choices": ["紅", "白", "淡白", "紫"],
-                "correct_answer": "紅",
-                "explanation": "腎區偏紅代表腎陰虛火旺"
-            },
-            "肝膽": {
-                "question": "肝膽區判斷為？",
-                "choices": ["暗紫", "淡紅", "正常紅", "青紫"],
-                "correct_answer": "暗紫",
-                "explanation": "肝鬱氣滯時常見暗紫色"
-            },
-            "心肺": {
-                "question": "心肺區判斷為？",
-                "choices": ["紅", "紫", "淡紅", "白"],
-                "correct_answer": "淡紅",
-                "explanation": "心肺功能偏弱時會出現淡紅"
-            },
-            "脾胃": {
-                "question": "脾胃區判斷為？",
-                "choices": ["黃膩", "白厚", "正常", "剝落"],
-                "correct_answer": "黃膩",
-                "explanation": "黃膩常見於脾胃濕熱"
-            }
-        }
-    }
-    mongo_db["zone_questions"].insert_one(question)
-    return "✅ 五區題已插入"
-
-@app.route("/insert_batch_practice")
-def insert_batch_practice():
-    folder = "home"
-    all_tags = ["白苔", "黃苔", "紅紫舌無苔", "灰黑苔"]
-    count = 0
-
-    for tag in all_tags:
-        res = cloudinary.Search() \
-            .expression(f"folder={folder}/{tag}") \
-            .sort_by("public_id", "asc") \
-            .max_results(100) \
-            .execute()
-
-        for img in res["resources"]:
-            url = img["secure_url"]
-            question = {
-                "image_url": url,
-                "question": "請判斷此舌頭的主要顏色為？",
-                "choices": all_tags,
-                "correct_answer": tag,
-                "explanation": f"{tag} 為中醫舌診常見舌象之一"
-            }
-            mongo_db["practice_questions"].insert_one(question)
-            count += 1
-
-    return f"✅ 已成功新增 {count} 筆主色練習題！"
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
