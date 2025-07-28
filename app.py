@@ -165,3 +165,25 @@ def insert_sample_question():
     }
     mongo_db["practice_questions"].insert_one(question)
     return "Sample question inserted!"
+
+from flask import session
+import random
+
+@app.route("/practice")
+def show_practice():
+    question = mongo_db["practice_questions"].aggregate([{"$sample": {"size": 1}}]).next()
+    session["correct_answer"] = question["correct_answer"]
+    session["explanation"] = question["explanation"]
+    return render_template("practice.html", question=question)
+
+@app.route("/submit_answer", methods=["POST"])
+def submit_answer():
+    user_answer = request.form.get("answer")
+    correct_answer = session.get("correct_answer")
+    explanation = session.get("explanation")
+    is_correct = (user_answer == correct_answer)
+    return render_template("result.html", is_correct=is_correct,
+                           user_answer=user_answer,
+                           correct_answer=correct_answer,
+                           explanation=explanation)
+
