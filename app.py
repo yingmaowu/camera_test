@@ -1,4 +1,5 @@
-from flask import Flask, render_template, request, jsonify
+
+from flask import Flask, render_template, request, jsonify, session
 import os
 import datetime
 from dotenv import load_dotenv
@@ -10,9 +11,11 @@ import io
 from bson import ObjectId
 from color_analysis import analyze_image_color
 from color_analysis_overlay import analyze_tongue_regions_with_overlay
+import random
 
 load_dotenv()
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "defaultsecret")
 
 # MongoDB Atlas 連線
 mongo_client = MongoClient(os.environ.get("MONGO_URI"))
@@ -142,10 +145,6 @@ def delete_record():
     except Exception as e:
         return jsonify({"error": "刪除失敗", "detail": str(e)}), 500
 
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    print("✅ Flask app running with integrated tongue color and region analysis.")
-    app.run(host="0.0.0.0", port=port)
 @app.route("/teaching")
 def teaching():
     return render_template("teaching.html")
@@ -166,9 +165,6 @@ def insert_sample_question():
     mongo_db["practice_questions"].insert_one(question)
     return "Sample question inserted!"
 
-from flask import session
-import random
-
 @app.route("/practice")
 def show_practice():
     question = mongo_db["practice_questions"].aggregate([{"$sample": {"size": 1}}]).next()
@@ -187,3 +183,7 @@ def submit_answer():
                            correct_answer=correct_answer,
                            explanation=explanation)
 
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 8080))
+    print("✅ Flask app running with integrated tongue color and region analysis.")
+    app.run(host="0.0.0.0", port=port)
