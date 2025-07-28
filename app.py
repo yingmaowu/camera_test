@@ -153,3 +153,15 @@ def teaching():
 @app.route("/tongue_teaching")
 def tongue_teaching():
     return render_template("tongue_teaching.html")
+
+@app.route("/insert_sample_question")
+def insert_sample_question():
+    question = {
+        "image_url": "https://res.cloudinary.com/demo/image/upload/v1620000000/sample_tongue.jpg",
+        "question": "請判斷此舌頭的主要顏色為？",
+        "choices": ["白苔", "黃苔", "紅舌", "黑灰"],
+        "correct_answer": "黃苔",
+        "explanation": "黃苔多見於內熱證，可能為脾胃濕熱"
+    }
+    mongo_db["practice_questions"].insert_one(question)
+    return "Sample question inserted!"
