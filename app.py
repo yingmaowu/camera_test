@@ -210,6 +210,42 @@ def submit_zone_answer():
         for zone in correct
     }
     return render_template("result_zone.html", result=result)
+    
+@app.route("/insert_sample_zone_question")
+def insert_sample_zone_question():
+    question = {
+        "image_url": "https://res.cloudinary.com/dzrfr0ays/image/upload/v1753696609/tongue/%E6%B8%AC%E8%A9%A6/b8fosjjyljlkykzgcbwq.jpg",
+        "question": "請根據下圖舌頭進行五區診斷：",
+        "zones": {
+            "腎": {
+                "question": "腎區判斷為？",
+                "choices": ["紅", "白", "淡白", "紫"],
+                "correct_answer": "紅",
+                "explanation": "腎區偏紅代表腎陰虛火旺"
+            },
+            "肝膽": {
+                "question": "肝膽區判斷為？",
+                "choices": ["暗紫", "淡紅", "正常紅", "青紫"],
+                "correct_answer": "暗紫",
+                "explanation": "肝鬱氣滯時常見暗紫色"
+            },
+            "心肺": {
+                "question": "心肺區判斷為？",
+                "choices": ["紅", "紫", "淡紅", "白"],
+                "correct_answer": "淡紅",
+                "explanation": "心肺功能偏弱時會出現淡紅"
+            },
+            "脾胃": {
+                "question": "脾胃區判斷為？",
+                "choices": ["黃膩", "白厚", "正常", "剝落"],
+                "correct_answer": "黃膩",
+                "explanation": "黃膩常見於脾胃濕熱"
+            }
+        }
+    }
+    mongo_db["zone_questions"].insert_one(question)
+    return "✅ 五區題已插入"
+    
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
