@@ -202,6 +202,46 @@ def submit_zone_answer():
     }
     return render_template("result_zone.html", result=result)
 
+
+@app.route("/practice")
+def practice():
+    questions = []
+    for folder, label in {
+        "white": "白苔",
+        "black": "灰黑苔",
+        "red": "紅紫舌無苔",
+        "yellow": "黃苔"
+    }.items():
+        resources = cloudinary.api.resources(type="upload", prefix=f"home/{label}", max_results=100)
+        if resources['resources']:
+            questions.append({
+                "url": random.choice(resources['resources'])['secure_url'],
+                "label": label
+            })
+
+    question = random.choice(questions)
+    choices = ["白苔", "灰黑苔", "紅紫舌無苔", "黃苔"]
+    random.shuffle(choices)
+    session['answer'] = question['label']
+
+    return render_template("practice.html", question={
+        "image_url": question['url'],
+        "question": "這是哪一種舌象？",
+        "choices": choices
+    })
+
+@app.route("/submit_answer", methods=["POST"])
+def submit_answer():
+    user_answer = request.form.get("answer")
+    correct_answer = session.get("answer")
+    is_correct = user_answer == correct_answer
+
+    explanation = f"這張圖來自分類：{correct_answer}。請注意舌苔顏色與質地的差異。"
+    return render_template("result.html", user_answer=user_answer,
+                           correct_answer=correct_answer,
+                           is_correct=is_correct,
+                           explanation=explanation)
+
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
     print("✅ Flask app running with integrated tongue color and region analysis.")
