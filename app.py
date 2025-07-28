@@ -182,6 +182,35 @@ def submit_answer():
                            user_answer=user_answer,
                            correct_answer=correct_answer,
                            explanation=explanation)
+    @app.route("/practice_zone")
+def practice_zone():
+    question = mongo_db["zone_questions"].aggregate([{"$sample": {"size": 1}}]).next()
+    session["zone_correct"] = {
+        zone: data["correct_answer"]
+        for zone, data in question["zones"].items()
+    }
+    session["zone_explanation"] = {
+        zone: data["explanation"]
+        for zone, data in question["zones"].items()
+    }
+    return render_template("practice_zone.html", question=question)
+
+@app.route("/submit_zone_answer", methods=["POST"])
+def submit_zone_answer():
+    user_answers = {k: v for k, v in request.form.items()}
+    correct = session.get("zone_correct", {})
+    explanation = session.get("zone_explanation", {})
+    result = {
+        zone: {
+            "user": user_answers.get(zone),
+            "correct": correct.get(zone),
+            "is_correct": user_answers.get(zone) == correct.get(zone),
+            "explanation": explanation.get(zone)
+        }
+        for zone in correct
+    }
+    return render_template("result_zone.html", result=result)
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
