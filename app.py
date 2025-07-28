@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, jsonify, session
 import os
 import datetime
@@ -182,7 +181,8 @@ def submit_answer():
                            user_answer=user_answer,
                            correct_answer=correct_answer,
                            explanation=explanation)
-    @app.route("/practice_zone")
+
+@app.route("/practice_zone")
 def practice_zone():
     question = mongo_db["zone_questions"].aggregate([{"$sample": {"size": 1}}]).next()
     session["zone_correct"] = {
@@ -210,7 +210,6 @@ def submit_zone_answer():
         for zone in correct
     }
     return render_template("result_zone.html", result=result)
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
