@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from pymongo import MongoClient
 import cloudinary
 import cloudinary.uploader
-import cloudinary.api
+import cloudinary.api  # ← 用於列資料夾/取資源
 import tempfile
 import io
 from bson import ObjectId
@@ -20,7 +20,7 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "defaultsecret")
 
-# MongoDB Atlas（仍保留：上傳紀錄/歷史用）
+# MongoDB（上傳紀錄 / 歷史）
 mongo_client = MongoClient(os.environ.get("MONGO_URI"))
 mongo_db = mongo_client["tongueDB"]
 records_collection = mongo_db["records"]
@@ -59,7 +59,6 @@ def upload_image():
 
     image = request.files.get('image') or request.form.get('image')
     patient_id = request.form.get('patient_id', 'unknown').strip()
-
     if not patient_id:
         return "Missing patient ID", 400
 
@@ -85,10 +84,9 @@ def upload_image():
         five_regions = analyze_tongue_regions_with_overlay(tmp_path)
         print("🧪 五區分析結果:", five_regions)
 
-        # 移除暫存檔
         os.remove(tmp_path)
 
-        # 寫入 MongoDB（僅歷史紀錄用途）
+        # 寫入 MongoDB（歷史紀錄）
         record = {
             "patient_id": patient_id,
             "image_url": image_url,
@@ -130,7 +128,6 @@ def get_history_data():
     patient_id = request.args.get("patient", "").strip()
     if not patient_id:
         return jsonify([])
-
     try:
         records = list(records_collection.find({"patient_id": patient_id}).sort("timestamp", -1))
         for r in records:
@@ -146,11 +143,10 @@ def delete_record():
     record_id = data.get("id")
     if not record_id:
         return jsonify({"error": "Missing ID"}), 400
-
     try:
         record = records_collection.find_one({"_id": ObjectId(record_id)})
         if record:
-            # 注意：若你需要 100% 正確的 public_id，建議上傳時同時儲存 public_id
+            # 更嚴謹做法是上傳時一併儲存 public_id；這裡先以 URL 拆法簡化
             public_id = record["image_url"].split("/")[-1].split(".")[0]
             cloudinary.uploader.destroy(public_id)
             records_collection.delete_one({"_id": ObjectId(record_id)})
@@ -167,7 +163,7 @@ def delete_record():
 def practice():
     print("🟣 [practice] Cloudinary 出題路由已被呼叫")
 
-    base = "home"  # 你的 Cloudinary 資料夾是小寫 home
+    base = "home"  # 你的資料夾是小寫 home
     labels = {
         "white": "白苔",
         "black": "灰黑苔",
@@ -179,11 +175,11 @@ def practice():
     counts = {}
 
     try:
-        # 列出 home 底下有哪些子資料夾，確認命名
-        sub = cloudinary.api.sub_folders(base)
-        print("📁 sub_folders(home):", [f["name"] for f in sub.get("folders", [])])
+        # ✅ 修正 API 名稱：subfolders（沒有底線）
+        sub = cloudinary.api.subfolders(base)
+        print("📁 subfolders(home):", [f["name"] for f in sub.get("folders", [])])
 
-        # 逐類取圖（嘗試有/無尾斜線的 prefix，避免微小差異）
+        # 逐類取圖（有/無尾斜線都試，避免邊界）
         for _, label in labels.items():
             r1 = cloudinary.api.resources(type="upload", resource_type="image",
                                           prefix=f"{base}/{label}", max_results=100)
@@ -192,10 +188,7 @@ def practice():
             pool = (r1.get("resources", []) or []) + (r2.get("resources", []) or [])
             counts[label] = len(pool)
             if pool:
-                questions.append({
-                    "url": random.choice(pool)["secure_url"],
-                    "label": label
-                })
+                questions.append({"url": random.choice(pool)["secure_url"], "label": label})
     except Exception as e:
         print("❌ Cloudinary 讀取錯誤：", e)
         return f"❌ Cloudinary 錯誤：{e}"
@@ -204,15 +197,15 @@ def practice():
 
     if not questions:
         return ("⚠️ Cloudinary 沒有可用圖片。請檢查："
-                "1) Cloudinary 的『home』（小寫）裡是否有『白苔/灰黑苔/紅紫舌無苔/黃苔』四個資料夾；"
-                "2) 名稱需完全一致（全形中文、無多空格）；"
-                "3) 圖片是 image/upload 類型。")
+                "1) home/白苔、home/灰黑苔、home/紅紫舌無苔、home/黃苔 是否存在；"
+                "2) 名稱完全一致（全形中文、無多空格、大小寫正確）；"
+                "3) 圖片為 image/upload 類型。")
 
     q = random.choice(questions)
     choices = list(labels.values())
     random.shuffle(choices)
 
-    session["answer"] = q["label"]  # 提供給下面 submit 判分
+    session["answer"] = q["label"]  # 提供給 submit 判分
     return render_template("practice.html", question={
         "image_url": q["url"],
         "question": "這是哪一種舌象？",
@@ -225,7 +218,6 @@ def submit_practice_answer():
     correct_answer = session.get("answer")
     is_correct = (user_answer == correct_answer)
     explanation = f"這張圖的分類是：{correct_answer}，請注意舌苔顏色與質地的差異。"
-
     return render_template("result.html",
                            user_answer=user_answer,
                            correct_answer=correct_answer,
@@ -233,7 +225,7 @@ def submit_practice_answer():
                            explanation=explanation)
 
 # -------------------------
-# 教學頁（保留）
+# 教學頁
 # -------------------------
 @app.route("/teaching")
 def teaching():
@@ -244,7 +236,7 @@ def tongue_teaching():
     return render_template("tongue_teaching.html")
 
 # -------------------------
-# （選用）區域練習：若你現有模板/result_zone.html 仍在，就保留；沒有就可移除
+#（可留可移除）區域練習：若你的模板存在就保留，否則可刪
 # -------------------------
 @app.route("/practice_zone")
 def practice_zone():
@@ -277,12 +269,12 @@ def submit_zone_answer():
 # -------------------------
 @app.route("/debug/practice")
 def debug_practice():
-    return "Cloudinary practice route is ACTIVE ✅ (folder: home)"
+    return "Cloudinary practice route is ACTIVE ✅ (folder: home, using subfolders)"
 
 @app.route("/debug/cloudinary")
 def debug_cloudinary():
     try:
-        sub = cloudinary.api.sub_folders("home")
+        sub = cloudinary.api.subfolders("home")  # ✅ 修正名稱
         folders = [f["name"] for f in sub.get("folders", [])]
         sample = {}
         for name in folders:
