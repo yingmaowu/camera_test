@@ -77,7 +77,7 @@
     sendData.append("user_answers", JSON.stringify(answers));
     sendData.append("user_summary", fd.get("summary"));
 
-    fetch("/practice/upload", { method:"POST", body:sendData })
+    fetch("/practice/upload", { method: "POST", body: sendData })
       .then(r => {
         if (!r.ok) throw new Error(`伺服器錯誤：${r.status}`);
         return r.json();
