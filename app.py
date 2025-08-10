@@ -11,6 +11,9 @@ import io
 from bson import ObjectId
 from color_analysis import analyze_image_color
 from color_analysis_overlay import analyze_tongue_regions_with_overlay
+from practice_app import practice_bp
+app.register_blueprint(practice_bp, url_prefix="/practice")
+
 import random
 
 # -------------------------
