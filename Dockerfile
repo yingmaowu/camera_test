@@ -15,4 +15,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # EXPOSE 非必要 on Render
-CMD ["gunicorn", "-b", "0.0.0.0:8080", "app:app"]
+CMD ["sh","-c","gunicorn app:app --workers 2 --threads 4 --timeout 120 --log-level debug --preload -b 0.0.0.0:$PORT"]
+
