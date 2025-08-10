@@ -159,6 +159,8 @@ def delete_record():
 # -------------------------
 # Cloudinary 即時出題（不讀 MongoDB 題庫）
 # -------------------------
+from cloudinary.search import Search  # 檔案頂部若尚未 import，補這行
+
 @app.route("/practice", methods=["GET"])
 def practice():
     print("🟣 [practice] Cloudinary 出題路由已被呼叫")
@@ -173,39 +175,58 @@ def practice():
 
     questions = []
     counts = {}
+    debug_samples = {}
 
     try:
-        # ✅ 修正 API 名稱：subfolders（沒有底線）
+        # 先列資料夾，對照命名
         sub = cloudinary.api.subfolders(base)
         print("📁 subfolders(home):", [f["name"] for f in sub.get("folders", [])])
 
-        # 逐類取圖（有/無尾斜線都試，避免邊界）
         for _, label in labels.items():
-            r1 = cloudinary.api.resources(type="upload", resource_type="image",
-                                          prefix=f"{base}/{label}", max_results=100)
-            r2 = cloudinary.api.resources(type="upload", resource_type="image",
-                                          prefix=f"{base}/{label}/", max_results=100)
-            pool = (r1.get("resources", []) or []) + (r2.get("resources", []) or [])
-            counts[label] = len(pool)
-            if pool:
-                questions.append({"url": random.choice(pool)["secure_url"], "label": label})
+            # 用 Search API 搜尋整個資料夾（含子資料夾），不限制 type/resource_type
+            # 只限制最多 200 筆，避免太大
+            expr = f'folder="{base}/{label}"'
+            res = Search().expression(expr).max_results(200).execute()
+            resources = res.get("resources", [])
+
+            counts[label] = len(resources)
+
+            # 留 3 筆 sample 方便在 log 看看到底是什麼 type/resource_type
+            debug_samples[label] = [
+                {
+                    "public_id": r.get("public_id"),
+                    "folder": r.get("folder"),
+                    "type": r.get("type"),
+                    "resource_type": r.get("resource_type"),
+                    "secure_url": r.get("secure_url"),
+                }
+                for r in resources[:3]
+            ]
+
+            if resources:
+                pick = random.choice(resources)
+                url = pick.get("secure_url") or pick.get("url")
+                if url:
+                    questions.append({"url": url, "label": label})
+
     except Exception as e:
         print("❌ Cloudinary 讀取錯誤：", e)
         return f"❌ Cloudinary 錯誤：{e}"
 
-    print("🟣 [practice] 取圖統計：", counts)
+    print("🟣 [practice] 取圖統計（Search API）:", counts)
+    print("🧾 [practice] 資源 sample：", debug_samples)
 
     if not questions:
         return ("⚠️ Cloudinary 沒有可用圖片。請檢查："
-                "1) home/白苔、home/灰黑苔、home/紅紫舌無苔、home/黃苔 是否存在；"
-                "2) 名稱完全一致（全形中文、無多空格、大小寫正確）；"
-                "3) 圖片為 image/upload 類型。")
+                "1) 是否真的把圖片放在 home/白苔、home/灰黑苔、home/紅紫舌無苔、home/黃苔（或其子資料夾）；"
+                "2) 檔名/資料夾名稱完全一致（全形中文、無多空格、大小寫正確）；"
+                "3) /debug/cloudinary 看看 samples 是否有 URL（若 type=authenticated 也會有 secure_url）。")
 
     q = random.choice(questions)
     choices = list(labels.values())
     random.shuffle(choices)
 
-    session["answer"] = q["label"]  # 提供給 submit 判分
+    session["answer"] = q["label"]
     return render_template("practice.html", question={
         "image_url": q["url"],
         "question": "這是哪一種舌象？",
