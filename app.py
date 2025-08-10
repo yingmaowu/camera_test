@@ -150,7 +150,7 @@ def delete_record():
     try:
         record = records_collection.find_one({"_id": ObjectId(record_id)})
         if record:
-            # 若需要完整 public_id，建議儲存時順便存 public_id；這裡先做簡化處理
+            # 注意：若你需要 100% 正確的 public_id，建議上傳時同時儲存 public_id
             public_id = record["image_url"].split("/")[-1].split(".")[0]
             cloudinary.uploader.destroy(public_id)
             records_collection.delete_one({"_id": ObjectId(record_id)})
@@ -161,23 +161,13 @@ def delete_record():
         return jsonify({"error": "刪除失敗", "detail": str(e)}), 500
 
 # -------------------------
-# 教學頁
-# -------------------------
-@app.route("/teaching")
-def teaching():
-    return render_template("teaching.html")
-
-@app.route("/tongue_teaching")
-def tongue_teaching():
-    return render_template("tongue_teaching.html")
-
-# -------------------------
-# Cloudinary 隨機出題（關鍵）
+# Cloudinary 隨機出題（★使用小寫 home）
 # -------------------------
 @app.route("/practice")
 def practice():
     print("🟣 [practice] Cloudinary 出題路由已被呼叫")
 
+    base = "home"  # 你的資料夾是小寫 home
     labels = {
         "white": "白苔",
         "black": "灰黑苔",
@@ -187,28 +177,36 @@ def practice():
 
     questions = []
     counts = {}
+
     try:
-        for folder, label in labels.items():
-            res = cloudinary.api.resources(
-                type="upload",
-                prefix=f"home/{label}",   # 確認你的 Cloudinary 目錄為 home/白苔 等
-                max_results=100
-            )
-            cnt = len(res.get("resources", []))
-            counts[label] = cnt
-            if cnt > 0:
+        # 列出 home 底下有哪些子資料夾（對名字）
+        sub = cloudinary.api.sub_folders(base)
+        print("📁 sub_folders(home):", [f["name"] for f in sub.get("folders", [])])
+
+        # 逐類取圖（嘗試有無尾斜線，避免小差異）
+        for _, label in labels.items():
+            r1 = cloudinary.api.resources(type="upload", resource_type="image",
+                                          prefix=f"{base}/{label}", max_results=100)
+            r2 = cloudinary.api.resources(type="upload", resource_type="image",
+                                          prefix=f"{base}/{label}/", max_results=100)
+            pool = (r1.get("resources", []) or []) + (r2.get("resources", []) or [])
+            counts[label] = len(pool)
+            if pool:
                 questions.append({
-                    "url": random.choice(res["resources"])["secure_url"],
+                    "url": random.choice(pool)["secure_url"],
                     "label": label
                 })
     except Exception as e:
-        print(f"❌ Cloudinary 錯誤：{e}")
+        print("❌ Cloudinary 讀取錯誤：", e)
         return f"❌ Cloudinary 錯誤：{e}"
 
-    print(f"🟣 [practice] 取圖統計：{counts}")
+    print("🟣 [practice] 取圖統計：", counts)
 
     if not questions:
-        return "⚠️ Cloudinary 沒有可用圖片（請確認 home/白苔、home/灰黑苔、home/紅紫舌無苔、home/黃苔）"
+        return ("⚠️ Cloudinary 沒有可用圖片。請檢查："
+                "1) Cloudinary 的『home』（小寫）裡是否有『白苔/灰黑苔/紅紫舌無苔/黃苔』四個資料夾；"
+                "2) 名稱需完全一致（全形中文、無多空格）；"
+                "3) 圖片是 image/upload 類型。")
 
     q = random.choice(questions)
     choices = list(labels.values())
@@ -239,7 +237,24 @@ def submit_practice_answer():
 # -------------------------
 @app.route("/debug/practice")
 def debug_practice():
-    return "Cloudinary practice route is ACTIVE ✅"
+    return "Cloudinary practice route is ACTIVE ✅ (using folder: home)"
+
+@app.route("/debug/cloudinary")
+def debug_cloudinary():
+    try:
+        sub = cloudinary.api.sub_folders("home")
+        folders = [f["name"] for f in sub.get("folders", [])]
+        sample = {}
+        for name in folders:
+            r = cloudinary.api.resources(type="upload", resource_type="image",
+                                         prefix=f"home/{name}", max_results=3)
+            sample[name] = [x.get("secure_url") for x in r.get("resources", [])]
+        return {
+            "folders_under_home": folders,
+            "samples": sample
+        }
+    except Exception as e:
+        return {"error": str(e)}, 500
 
 # -------------------------
 # 入口
