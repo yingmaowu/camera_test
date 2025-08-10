@@ -1,6 +1,6 @@
-# app.py —— 主專案（Blueprint 版本）
+# app.py —— 主專案（Blueprint 版本，修正 PyMongo bool 判斷）
 from flask import Flask, render_template, request, jsonify, session
-import os, uuid, json, datetime, tempfile, io
+import os, json, datetime, tempfile, io, base64
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson import ObjectId
@@ -20,13 +20,25 @@ load_dotenv()
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "defaultsecret")
 
-# MongoDB（上傳紀錄 / 歷史）
+# ---- MongoDB（上傳紀錄 / 歷史）----
 MONGO_URI = os.environ.get("MONGO_URI")
-mongo_client = MongoClient(MONGO_URI) if MONGO_URI else None
-mongo_db = mongo_client["tongueDB"] if mongo_client else None
-records_collection = mongo_db["records"] if mongo_db else None
 
-# Cloudinary
+mongo_client = None
+mongo_db = None
+records_collection = None
+
+if MONGO_URI:
+    try:
+        mongo_client = MongoClient(MONGO_URI)
+        mongo_client.admin.command("ping")  # 確認可連線
+        mongo_db = mongo_client.get_database("tongueDB")
+        records_collection = mongo_db.get_collection("records")
+    except Exception:
+        mongo_client = None
+        mongo_db = None
+        records_collection = None
+
+# ---- Cloudinary ----
 cloudinary.config(
     cloud_name=os.environ.get("CLOUD_NAME"),
     api_key=os.environ.get("CLOUD_API_KEY"),
@@ -60,28 +72,40 @@ def index():
 # =========================
 @app.route("/upload", methods=["POST"])
 def upload_image():
-    # 允許 multipart 或 base64 表單
+    # 允許 multipart file 或 base64 data（image 欄位）
     if 'image' not in request.files and 'image' not in request.form:
         return "No image uploaded", 400
 
-    image = request.files.get('image') or request.form.get('image')
-    patient_id = request.form.get('patient_id', 'unknown').strip()
+    patient_id = (request.form.get('patient_id') or 'unknown').strip()
     if not patient_id:
         return "Missing patient ID", 400
 
+    # 讀入位元資料
+    image_bytes = None
+    fileobj = request.files.get('image')
+    if fileobj is not None:
+        image_bytes = fileobj.read()
+    else:
+        raw = request.form.get('image', '')
+        try:
+            if raw.startswith('data:'):
+                # data URL
+                _, b64 = raw.split(',', 1)
+                image_bytes = base64.b64decode(b64)
+            else:
+                # 純 base64
+                image_bytes = base64.b64decode(raw)
+        except Exception:
+            return "Invalid image payload", 400
+
     try:
-        # 讀入位元資料
-        image_bytes = image.read() if hasattr(image, "read") else image
-        if isinstance(image_bytes, str):
-            # 若是 base64 data URL（視情況補 decode），此處僅示意
-            image_bytes = image_bytes.encode("utf-8")
         image_stream = io.BytesIO(image_bytes)
 
         # 上傳至 Cloudinary（依病患分資料夾）
         up_res = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
-        image_url = up_res["secure_url"]
+        image_url = up_res.get("secure_url")
 
-        # 暫存檔做分析（本機短暫存檔）
+        # 暫存檔做分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
@@ -99,7 +123,7 @@ def upload_image():
 
         # 寫入 MongoDB（歷史紀錄）
         inserted_id = None
-        if records_collection:
+        if records_collection is not None:
             record = {
                 "patient_id": patient_id,
                 "image_url": image_url,
@@ -114,7 +138,7 @@ def upload_image():
 
         return jsonify({
             "success": True,
-            "id": str(inserted_id) if inserted_id else None,
+            "id": str(inserted_id) if inserted_id is not None else None,
             "image_url": image_url,
             "舌苔主色": main_color,
             "中醫推論": comment,
@@ -136,8 +160,8 @@ def history():
 
 @app.route("/history_data", methods=["GET"])
 def get_history_data():
-    patient_id = request.args.get("patient", "").strip()
-    if not patient_id or not records_collection:
+    patient_id = (request.args.get("patient") or "").strip()
+    if not patient_id or records_collection is None:
         return jsonify([])
 
     try:
@@ -151,22 +175,26 @@ def get_history_data():
 
 @app.route("/delete_record", methods=["POST"])
 def delete_record():
-    if not records_collection:
+    if records_collection is None:
         return jsonify({"error": "DB 未設定"}), 500
 
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
     record_id = data.get("id")
     if not record_id:
         return jsonify({"error": "Missing ID"}), 400
 
     try:
         record = records_collection.find_one({"_id": ObjectId(record_id)})
-        if not record:
+        if record is None:
             return jsonify({"error": "Record not found"}), 404
 
-        # 建議：上傳時把 public_id 一起存；此處以 URL 推 public_id 可能不準（有子資料夾）
+        # 建議：上傳時把 public_id 一起存；此處以 URL 推 public_id（有子資料夾時可能不準）
         public_id = record["image_url"].split("/")[-1].split(".")[0]
-        cloudinary.uploader.destroy(public_id)
+        try:
+            cloudinary.uploader.destroy(public_id)
+        except Exception:
+            pass
+
         records_collection.delete_one({"_id": ObjectId(record_id)})
         return jsonify({"success": True})
     except Exception as e:
@@ -193,8 +221,10 @@ def debug_cloudinary():
         folders = [f["name"] for f in sub.get("folders", [])]
         sample = {}
         for name in folders:
-            r = cloudinary.api.resources(type="upload", resource_type="image",
-                                         prefix=f"home/{name}", max_results=3)
+            r = cloudinary.api.resources(
+                type="upload", resource_type="image",
+                prefix=f"home/{name}", max_results=3
+            )
             sample[name] = [x.get("secure_url") for x in r.get("resources", [])]
         return {"folders_under_home": folders, "samples": sample}
     except Exception as e:
@@ -203,10 +233,9 @@ def debug_cloudinary():
 # =========================
 # 掛載 Blueprint（新專案練習頁）
 # =========================
-# 確保 practice_app/__init__.py 內有：
-#   practice_bp = Blueprint("practice", __name__, template_folder="templates", static_folder="static")
-#   @practice_bp.get("/")   → 練習首頁（相機預覽＋疊圖＋送 /practice/upload）
-#   @practice_bp.post("/upload") → 練習上傳分析（結果結構與主專案一致）
+# 確保 practice_app/__init__.py 內有 practice_bp 並定義：
+#   @practice_bp.get("/")        → 練習首頁
+#   @practice_bp.post("/upload") → 練習上傳分析（回傳鍵名與主專案一致）
 from practice_app import practice_bp
 app.register_blueprint(practice_bp, url_prefix="/practice")
 
