@@ -6,6 +6,7 @@
   <img src="{{ question.image_url }}" alt="舌照" width="300"><br><br>
 
   <form method="POST" action="/submit_practice_answer">
+    <input type="hidden" name="qid" value="{{ qid }}">
     {% for choice in question.choices %}
       <input type="radio" name="answer" value="{{ choice }}" required> {{ choice }}<br>
     {% endfor %}
