@@ -1,4 +1,3 @@
-# app.py —— 主專案（Blueprint 版本，修正 PyMongo bool 判斷）
 from flask import Flask, render_template, request, jsonify, session
 import os, json, datetime, tempfile, io, base64
 from dotenv import load_dotenv
@@ -22,7 +21,6 @@ app.secret_key = os.environ.get("SECRET_KEY", "defaultsecret")
 
 # ---- MongoDB（上傳紀錄 / 歷史）----
 MONGO_URI = os.environ.get("MONGO_URI")
-
 mongo_client = None
 mongo_db = None
 records_collection = None
@@ -44,12 +42,12 @@ cloudinary.config(
     api_key=os.environ.get("CLOUD_API_KEY"),
     api_secret=os.environ.get("CLOUD_API_SECRET")
 )
+
 # ---- 題庫（MongoDB practice_questions）----
 try:
     questions_collection = mongo_db.get_collection("practice_questions") if mongo_db else None
 except Exception:
     questions_collection = None
-)
 
 # 健康檢查（Render/監控用）
 @app.get("/healthz")
@@ -78,7 +76,6 @@ def index():
 # =========================
 @app.route("/upload", methods=["POST"])
 def upload_image():
-    # 允許 multipart file 或 base64 data（image 欄位）
     if 'image' not in request.files and 'image' not in request.form:
         return "No image uploaded", 400
 
@@ -86,7 +83,6 @@ def upload_image():
     if not patient_id:
         return "Missing patient ID", 400
 
-    # 讀入位元資料
     image_bytes = None
     fileobj = request.files.get('image')
     if fileobj is not None:
@@ -95,39 +91,31 @@ def upload_image():
         raw = request.form.get('image', '')
         try:
             if raw.startswith('data:'):
-                # data URL
                 _, b64 = raw.split(',', 1)
                 image_bytes = base64.b64decode(b64)
             else:
-                # 純 base64
                 image_bytes = base64.b64decode(raw)
         except Exception:
             return "Invalid image payload", 400
 
     try:
         image_stream = io.BytesIO(image_bytes)
-
-        # 上傳至 Cloudinary（依病患分資料夾）
         up_res = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = up_res.get("secure_url")
 
-        # 暫存檔做分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
             tmp_path = tmp.name
 
-        # 主色與五區分析（沿用你的 color_analysis* 模組）
         main_color, comment, advice, rgb = analyze_image_color(tmp_path)
         five_regions = analyze_tongue_regions_with_overlay(tmp_path)
 
-        # 刪暫存
         try:
             os.remove(tmp_path)
         except Exception:
             pass
 
-        # 寫入 MongoDB（歷史紀錄）
         inserted_id = None
         if records_collection is not None:
             record = {
@@ -152,7 +140,6 @@ def upload_image():
             "主色RGB": rgb,
             "五區分析": five_regions
         })
-
     except Exception as e:
         return jsonify({"error": "上傳失敗", "detail": str(e)}), 500
 
@@ -194,7 +181,7 @@ def delete_record():
         if record is None:
             return jsonify({"error": "Record not found"}), 404
 
-        # 建議：上傳時把 public_id 一起存；此處以 URL 推 public_id（有子資料夾時可能不準）
+        # 建議：上傳時把 public_id 一起存；這裡用 URL 推 public_id 可能不準
         public_id = record["image_url"].split("/")[-1].split(".")[0]
         try:
             cloudinary.uploader.destroy(public_id)
@@ -217,7 +204,6 @@ def teaching():
 def tongue_teaching():
     return render_template("tongue_teaching.html")
 
-
 # =========================
 # 題庫式舌象判別練習（隨機從 Mongo/Cloudinary 出題）
 # =========================
@@ -229,7 +215,6 @@ def practice_quiz():
         q = next(questions_collection.aggregate([{"$sample": {"size": 1}}]))
     except StopIteration:
         return "題庫目前沒有題目", 404
-    # 將 _id 轉為字串給表單提交使用
     qid = str(q.get("_id"))
     return render_template("practice.html", question=q, qid=qid)
 
@@ -255,6 +240,7 @@ def submit_practice_answer():
                            correct_answer=correct,
                            is_correct=is_correct,
                            explanation=explanation)
+
 # =========================
 # Debug
 # =========================
@@ -275,11 +261,8 @@ def debug_cloudinary():
         return {"error": str(e)}, 500
 
 # =========================
-# 掛載 Blueprint（新專案練習頁）
+# 掛載 Blueprint（中醫五區辨識練習）
 # =========================
-# 確保 practice_app/__init__.py 內有 practice_bp 並定義：
-#   @practice_bp.get("/")        → 練習首頁
-#   @practice_bp.post("/upload") → 練習上傳分析（回傳鍵名與主專案一致）
 from practice_app import practice_bp
 app.register_blueprint(practice_bp, url_prefix="/practice")
 
