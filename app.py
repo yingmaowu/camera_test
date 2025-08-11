@@ -43,7 +43,7 @@ cloudinary.config(
     cloud_name=os.environ.get("CLOUD_NAME"),
     api_key=os.environ.get("CLOUD_API_KEY"),
     api_secret=os.environ.get("CLOUD_API_SECRET")
-
+)
 # ---- 題庫（MongoDB practice_questions）----
 try:
     questions_collection = mongo_db.get_collection("practice_questions") if mongo_db else None
