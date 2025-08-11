@@ -1,43 +1,58 @@
+# app.py —— 主專案（Blueprint 版本，修正 PyMongo bool 判斷）
 from flask import Flask, render_template, request, jsonify, session
-import os
-import datetime
+import os, json, datetime, tempfile, io, base64
 from dotenv import load_dotenv
 from pymongo import MongoClient
+from bson import ObjectId
+
 import cloudinary
 import cloudinary.uploader
-import cloudinary.api  # ← 用於列資料夾/取資源
-import tempfile
-import io
-from bson import ObjectId
+import cloudinary.api
+
 from color_analysis import analyze_image_color
 from color_analysis_overlay import analyze_tongue_regions_with_overlay
-from practice_app import practice_bp
-app.register_blueprint(practice_bp, url_prefix="/practice")
 
-import random
-
-# -------------------------
+# =========================
 # 基本設定
-# -------------------------
+# =========================
 load_dotenv()
+
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "defaultsecret")
 
-# MongoDB（上傳紀錄 / 歷史）
-mongo_client = MongoClient(os.environ.get("MONGO_URI"))
-mongo_db = mongo_client["tongueDB"]
-records_collection = mongo_db["records"]
+# ---- MongoDB（上傳紀錄 / 歷史）----
+MONGO_URI = os.environ.get("MONGO_URI")
 
-# Cloudinary
+mongo_client = None
+mongo_db = None
+records_collection = None
+
+if MONGO_URI:
+    try:
+        mongo_client = MongoClient(MONGO_URI)
+        mongo_client.admin.command("ping")  # 確認可連線
+        mongo_db = mongo_client.get_database("tongueDB")
+        records_collection = mongo_db.get_collection("records")
+    except Exception:
+        mongo_client = None
+        mongo_db = None
+        records_collection = None
+
+# ---- Cloudinary ----
 cloudinary.config(
     cloud_name=os.environ.get("CLOUD_NAME"),
     api_key=os.environ.get("CLOUD_API_KEY"),
     api_secret=os.environ.get("CLOUD_API_SECRET")
 )
 
-# -------------------------
+# 健康檢查（Render/監控用）
+@app.get("/healthz")
+def healthz():
+    return "ok", 200
+
+# =========================
 # 一般頁面
-# -------------------------
+# =========================
 @app.route("/")
 def home():
     return render_template("home.html")
@@ -52,60 +67,78 @@ def index():
     patient_id = request.args.get("patient", "unknown")
     return render_template("index.html", patient_id=patient_id)
 
-# -------------------------
-# 上傳、分析、儲存
-# -------------------------
+# =========================
+# 上傳、分析、儲存（主流程）
+# =========================
 @app.route("/upload", methods=["POST"])
 def upload_image():
+    # 允許 multipart file 或 base64 data（image 欄位）
     if 'image' not in request.files and 'image' not in request.form:
         return "No image uploaded", 400
 
-    image = request.files.get('image') or request.form.get('image')
-    patient_id = request.form.get('patient_id', 'unknown').strip()
+    patient_id = (request.form.get('patient_id') or 'unknown').strip()
     if not patient_id:
         return "Missing patient ID", 400
 
-    print(f"📸 接收到來自 {patient_id} 的圖片")
+    # 讀入位元資料
+    image_bytes = None
+    fileobj = request.files.get('image')
+    if fileobj is not None:
+        image_bytes = fileobj.read()
+    else:
+        raw = request.form.get('image', '')
+        try:
+            if raw.startswith('data:'):
+                # data URL
+                _, b64 = raw.split(',', 1)
+                image_bytes = base64.b64decode(b64)
+            else:
+                # 純 base64
+                image_bytes = base64.b64decode(raw)
+        except Exception:
+            return "Invalid image payload", 400
 
     try:
-        image_bytes = image.read()
         image_stream = io.BytesIO(image_bytes)
 
-        # 上傳至 Cloudinary
-        result = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
-        image_url = result["secure_url"]
-        print(f"☁️ Cloudinary 上傳成功：{image_url}")
+        # 上傳至 Cloudinary（依病患分資料夾）
+        up_res = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
+        image_url = up_res.get("secure_url")
 
-        # 暫存檔供分析
+        # 暫存檔做分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
             tmp_path = tmp.name
 
-        # 主色與五區分析
+        # 主色與五區分析（沿用你的 color_analysis* 模組）
         main_color, comment, advice, rgb = analyze_image_color(tmp_path)
         five_regions = analyze_tongue_regions_with_overlay(tmp_path)
-        print("🧪 五區分析結果:", five_regions)
 
-        os.remove(tmp_path)
+        # 刪暫存
+        try:
+            os.remove(tmp_path)
+        except Exception:
+            pass
 
         # 寫入 MongoDB（歷史紀錄）
-        record = {
-            "patient_id": patient_id,
-            "image_url": image_url,
-            "main_color": main_color,
-            "comment": comment,
-            "advice": advice,
-            "rgb": rgb,
-            "five_regions": five_regions,
-            "timestamp": datetime.datetime.utcnow()
-        }
-        inserted_id = records_collection.insert_one(record).inserted_id
-        print(f"✅ 紀錄已寫入 MongoDB：{inserted_id}")
+        inserted_id = None
+        if records_collection is not None:
+            record = {
+                "patient_id": patient_id,
+                "image_url": image_url,
+                "main_color": main_color,
+                "comment": comment,
+                "advice": advice,
+                "rgb": rgb,
+                "five_regions": five_regions,
+                "timestamp": datetime.datetime.utcnow()
+            }
+            inserted_id = records_collection.insert_one(record).inserted_id
 
         return jsonify({
             "success": True,
-            "id": str(inserted_id),
+            "id": str(inserted_id) if inserted_id is not None else None,
             "image_url": image_url,
             "舌苔主色": main_color,
             "中醫推論": comment,
@@ -115,12 +148,11 @@ def upload_image():
         })
 
     except Exception as e:
-        print(f"❌ 上傳或分析失敗：{e}")
         return jsonify({"error": "上傳失敗", "detail": str(e)}), 500
 
-# -------------------------
+# =========================
 # 歷史紀錄
-# -------------------------
+# =========================
 @app.route("/history")
 def history():
     patient_id = request.args.get("patient", "unknown")
@@ -128,9 +160,10 @@ def history():
 
 @app.route("/history_data", methods=["GET"])
 def get_history_data():
-    patient_id = request.args.get("patient", "").strip()
-    if not patient_id:
+    patient_id = (request.args.get("patient") or "").strip()
+    if not patient_id or records_collection is None:
         return jsonify([])
+
     try:
         records = list(records_collection.find({"patient_id": patient_id}).sort("timestamp", -1))
         for r in records:
@@ -142,115 +175,34 @@ def get_history_data():
 
 @app.route("/delete_record", methods=["POST"])
 def delete_record():
-    data = request.get_json()
+    if records_collection is None:
+        return jsonify({"error": "DB 未設定"}), 500
+
+    data = request.get_json(silent=True) or {}
     record_id = data.get("id")
     if not record_id:
         return jsonify({"error": "Missing ID"}), 400
+
     try:
         record = records_collection.find_one({"_id": ObjectId(record_id)})
-        if record:
-            # 更嚴謹做法是上傳時一併儲存 public_id；這裡先以 URL 拆法簡化
-            public_id = record["image_url"].split("/")[-1].split(".")[0]
-            cloudinary.uploader.destroy(public_id)
-            records_collection.delete_one({"_id": ObjectId(record_id)})
-            return jsonify({"success": True})
-        else:
+        if record is None:
             return jsonify({"error": "Record not found"}), 404
+
+        # 建議：上傳時把 public_id 一起存；此處以 URL 推 public_id（有子資料夾時可能不準）
+        public_id = record["image_url"].split("/")[-1].split(".")[0]
+        try:
+            cloudinary.uploader.destroy(public_id)
+        except Exception:
+            pass
+
+        records_collection.delete_one({"_id": ObjectId(record_id)})
+        return jsonify({"success": True})
     except Exception as e:
         return jsonify({"error": "刪除失敗", "detail": str(e)}), 500
 
-# -------------------------
-# Cloudinary 即時出題（不讀 MongoDB 題庫）
-# -------------------------
-from cloudinary.search import Search  # 檔案頂部若尚未 import，補這行
-
-@app.route("/practice", methods=["GET"])
-def practice():
-    print("🟣 [practice] Cloudinary 出題路由已被呼叫")
-
-    base = "home"  # 你的資料夾是小寫 home
-    labels = {
-        "white": "白苔",
-        "black": "灰黑苔",
-        "red": "紅紫舌無苔",
-        "yellow": "黃苔"
-    }
-
-    questions = []
-    counts = {}
-    debug_samples = {}
-
-    try:
-        # 先列資料夾，對照命名
-        sub = cloudinary.api.subfolders(base)
-        print("📁 subfolders(home):", [f["name"] for f in sub.get("folders", [])])
-
-        for _, label in labels.items():
-            # 用 Search API 搜尋整個資料夾（含子資料夾），不限制 type/resource_type
-            # 只限制最多 200 筆，避免太大
-            expr = f'folder="{base}/{label}"'
-            res = Search().expression(expr).max_results(200).execute()
-            resources = res.get("resources", [])
-
-            counts[label] = len(resources)
-
-            # 留 3 筆 sample 方便在 log 看看到底是什麼 type/resource_type
-            debug_samples[label] = [
-                {
-                    "public_id": r.get("public_id"),
-                    "folder": r.get("folder"),
-                    "type": r.get("type"),
-                    "resource_type": r.get("resource_type"),
-                    "secure_url": r.get("secure_url"),
-                }
-                for r in resources[:3]
-            ]
-
-            if resources:
-                pick = random.choice(resources)
-                url = pick.get("secure_url") or pick.get("url")
-                if url:
-                    questions.append({"url": url, "label": label})
-
-    except Exception as e:
-        print("❌ Cloudinary 讀取錯誤：", e)
-        return f"❌ Cloudinary 錯誤：{e}"
-
-    print("🟣 [practice] 取圖統計（Search API）:", counts)
-    print("🧾 [practice] 資源 sample：", debug_samples)
-
-    if not questions:
-        return ("⚠️ Cloudinary 沒有可用圖片。請檢查："
-                "1) 是否真的把圖片放在 home/白苔、home/灰黑苔、home/紅紫舌無苔、home/黃苔（或其子資料夾）；"
-                "2) 檔名/資料夾名稱完全一致（全形中文、無多空格、大小寫正確）；"
-                "3) /debug/cloudinary 看看 samples 是否有 URL（若 type=authenticated 也會有 secure_url）。")
-
-    q = random.choice(questions)
-    choices = list(labels.values())
-    random.shuffle(choices)
-
-    session["answer"] = q["label"]
-    return render_template("practice.html", question={
-        "image_url": q["url"],
-        "question": "這是哪一種舌象？",
-        "choices": choices
-    })
-
-@app.route("/submit_practice_answer", methods=["POST"])
-def submit_practice_answer():
-    user_answer = request.form.get("answer")
-    correct_answer = session.get("answer")
-    is_correct = (user_answer == correct_answer)
-    explanation = f"這張圖的分類是：{correct_answer}，請注意舌苔顏色與質地的差異。"
-    return render_template("result.html",
-                           user_answer=user_answer,
-                           correct_answer=correct_answer,
-                           is_correct=is_correct,
-                           explanation=explanation)
-
-# -------------------------
+# =========================
 # 教學頁
-# -------------------------
+# =========================
 @app.route("/teaching")
 def teaching():
     return render_template("teaching.html")
@@ -259,60 +211,86 @@ def teaching():
 def tongue_teaching():
     return render_template("tongue_teaching.html")
 
-# -------------------------
-#（可留可移除）區域練習：若你的模板存在就保留，否則可刪
-# -------------------------
-@app.route("/practice_zone")
-def practice_zone():
-    try:
-        question = mongo_db["zone_questions"].aggregate([{"$sample": {"size": 1}}]).next()
-    except StopIteration:
-        return "No zone questions available."
-    session["zone_correct"] = {zone: data["correct_answer"] for zone, data in question["zones"].items()}
-    session["zone_explanation"] = {zone: data["explanation"] for zone, data in question["zones"].items()}
-    return render_template("practice_zone.html", question=question)
-
-@app.route("/submit_zone_answer", methods=["POST"])
-def submit_zone_answer():
-    user_answers = {k: v for k, v in request.form.items()}
-    correct = session.get("zone_correct", {})
-    explanation = session.get("zone_explanation", {})
-    result = {
-        zone: {
-            "user": user_answers.get(zone),
-            "correct": correct.get(zone),
-            "is_correct": user_answers.get(zone) == correct.get(zone),
-            "explanation": explanation.get(zone)
-        }
-        for zone in correct
-    }
-    return render_template("result_zone.html", result=result)
-
-# -------------------------
-# Debug / 健康檢查
-# -------------------------
-@app.route("/debug/practice")
-def debug_practice():
-    return "Cloudinary practice route is ACTIVE ✅ (folder: home, using subfolders)"
-
+# =========================
+# Debug
+# =========================
 @app.route("/debug/cloudinary")
 def debug_cloudinary():
     try:
-        sub = cloudinary.api.subfolders("home")  # ✅ 修正名稱
+        sub = cloudinary.api.subfolders("home")
         folders = [f["name"] for f in sub.get("folders", [])]
         sample = {}
         for name in folders:
-            r = cloudinary.api.resources(type="upload", resource_type="image",
-                                         prefix=f"home/{name}", max_results=3)
+            r = cloudinary.api.resources(
+                type="upload", resource_type="image",
+                prefix=f"home/{name}", max_results=3
+            )
             sample[name] = [x.get("secure_url") for x in r.get("resources", [])]
         return {"folders_under_home": folders, "samples": sample}
     except Exception as e:
         return {"error": str(e)}, 500
 
-# -------------------------
-# 入口
-# -------------------------
+# =========================
+# 掛載 Blueprint（新專案練習頁）
+# =========================
+# 確保 practice_app/__init__.py 內有 practice_bp 並定義：
+#   @practice_bp.get("/")        → 練習首頁
+#   @practice_bp.post("/upload") → 練習上傳分析（回傳鍵名與主專案一致）
+from practice_app import practice_bp
+app.register_blueprint(practice_bp, url_prefix="/practice")
+
+# =========================
+# Cloudinary 題庫隨機抽題（舌象判別練習）
+# =========================
+from pymongo import MongoClient
+from bson.objectid import ObjectId
+
+def _get_mongo_collection():
+    uri = os.environ.get("MONGO_URI")
+    client = MongoClient(uri) if uri else None
+    if not client:
+        raise RuntimeError("缺少 MONGO_URI 環境變數，無法連線 MongoDB。")
+    db = client.get_database("tongueDB")
+    return db.get_collection("practice_questions")
+
+@app.route("/quiz", methods=["GET"])
+def quiz():
+    """從 MongoDB practice_questions 隨機抽一題並呈現 templates/practice.html"""
+    col = _get_mongo_collection()
+    doc = col.aggregate([{"$sample": {"size": 1}}]).next()
+    # 將 _id 轉為字串，避免 Jinja/表單處理問題
+    qid = str(doc.get("_id"))
+    return render_template("practice.html", question=doc, qid=qid)
+
+@app.route("/submit_practice_answer", methods=["POST"])
+def submit_practice_answer():
+    """接收使用者作答，對照正確答案並顯示結果"""
+    user_answer = request.form.get("answer")
+    qid = request.form.get("qid")
+    if not qid:
+        return "缺少題目 ID", 400
+
+    col = _get_mongo_collection()
+    doc = col.find_one({"_id": ObjectId(qid)})
+    if not doc:
+        return "找不到題目", 404
+
+    correct = doc.get("correct_answer")
+    explanation = doc.get("explanation", "")
+    is_correct = (user_answer == correct)
+
+    return render_template(
+        "result.html",
+        user_answer=user_answer,
+        correct_answer=correct,
+        explanation=explanation,
+        is_correct=is_correct
+    )
+
+
+# =========================
+# 入口（本機啟動）
+# =========================
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8080))
-    print("✅ Flask app running with Cloudinary-based practice + MongoDB records")
     app.run(host="0.0.0.0", port=port)
