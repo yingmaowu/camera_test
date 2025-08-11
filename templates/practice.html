@@ -18,7 +18,7 @@
 </head>
 <body>
   <div class="wrap">
-    <h2>舌象判別練習</h2>
+    <h2>舌象判別練習（核心版：Cloudinary 直接出題）</h2>
 
     <p>{{ question.question or '請判斷此舌頭的主要顏色為？' }}</p>
 
@@ -28,13 +28,8 @@
     </div>
 
     <form method="POST" action="/submit_practice_answer">
-      {# Mongo 題庫：帶 qid；Cloudinary fallback：帶 correct；兩者都會附帶 image_url #}
-      {% if qid %}
-        <input type="hidden" name="qid" value="{{ qid }}">
-      {% endif %}
-      {% if correct %}
-        <input type="hidden" name="correct" value="{{ correct }}">
-      {% endif %}
+      <!-- Cloudinary 直接出題：用 hidden 傳正解 -->
+      <input type="hidden" name="correct" value="{{ correct }}">
       <input type="hidden" name="image_url" value="{{ question.image_url }}">
 
       <div class="choices">
