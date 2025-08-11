@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>舌象分類教學</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body {
+      text-align: center;
+      font-family: "Segoe UI", sans-serif;
+      background: #f9f9f9;
+      margin: 0;
+      padding: 1rem;
+    }
+    h2 {
+      margin: 1rem;
+      font-weight: 600;
+      font-size: 1.5rem;
+    }
+    #tongueWrapper {
+      position: relative;
+      display: inline-block;
+      border: 1px solid #ccc;
+      border-radius: 12px;
+      background: white;
+      padding: 1rem;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    }
+    #tongueImg {
+      width: 300px;
+      max-width: 90vw;
+      border-radius: 10px;
+    }
+    .region {
+      position: absolute;
+      cursor: pointer;
+      background: rgba(255, 192, 203, 0.4); /* 淡粉紅 */
+      border: 2px solid #ff4d4d; /* 紅色邊框 */
+      border-radius: 4px;
+      text-align: center;
+      line-height: 1.2;
+      font-weight: bold;
+      color: #333;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    button {
+      margin: 1rem;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      background: #4a90e2;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover { background-color: #357ABD; }
+  </style>
+</head>
+<body>
+  <h2>舌象分類教學</h2>
+
+  <div id="tongueWrapper">
+    <img id="tongueImg" src="{{ url_for('static', filename='overlay.png') }}" alt="舌頭示意圖">
+
+    <!-- 舌根 (略下移+左移) -->
+    <div class="region" style="top: 17%; left: 33%; width: 30%; height: 10%;"
+      onclick="showInfo('舌根', '腎功能', `淡紅：腎功能正常<br>黑灰：腎氣不足<br>苔厚膩：濕熱內蘊`, '建議：作息規律，早睡保暖，避免過度勞累')">舌根</div>
+
+    <!-- 舌中 (上移一點+左移微微) -->
+    <div class="region" style="top: 48%; left: 34%; width: 30%; height: 15%;"
+      onclick="showInfo('舌中', '脾胃功能', `淡紅：脾胃健運<br>苔厚黃：脾胃濕熱<br>苔白滑：脾胃虛寒`, '建議：避免過食油炸寒涼，飲食均衡')">舌中</div>
+
+    <!-- 舌邊 左 (上移+向中間) -->
+    <div class="region" style="top: 38%; left: 22%; width: 20%; height: 20%;"
+      onclick="showInfo('舌邊(左)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
+
+    <!-- 舌邊 右 (上移+向中間) -->
+    <div class="region" style="top: 38%; left: 58%; width: 20%; height: 20%;"
+      onclick="showInfo('舌邊(右)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
+
+    <!-- 舌尖 (細長+上移略+左移一點) -->
+    <div class="region" style="top: 73%; left: 38%; width: 24%; height: 8%;"
+      onclick="showInfo('舌尖', '心肺功能', `紅潤：心肺功能正常<br>偏紅：火氣旺盛<br>暗淡：血虛氣弱`, '建議：維持規律作息，多喝溫水')">舌尖</div>
+  </div>
+
+  <br>
+  <button onclick="history.back()">上一頁</button>
+
+  <script>
+    function showInfo(region, organ, info, advice) {
+      Swal.fire({
+        title: `${region} (${organ})`,
+        html: `<div style="text-align:left;font-size:1rem;line-height:1.5;">${info}<br><br><b>${advice}</b></div>`,
+        icon: "info",
+        confirmButtonText: "了解"
+      });
+    }
+  </script>
+</body>
+</html>
