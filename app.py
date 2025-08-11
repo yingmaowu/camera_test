@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, session
-import os, json, datetime, tempfile, io, base64
+import os, json, datetime, tempfile, io, base64, random
 from dotenv import load_dotenv
 from pymongo import MongoClient
 from bson import ObjectId
@@ -36,18 +36,72 @@ if MONGO_URI:
         mongo_db = None
         records_collection = None
 
-# ---- Cloudinary ----
-cloudinary.config(
-    cloud_name=os.environ.get("CLOUD_NAME"),
-    api_key=os.environ.get("CLOUD_API_KEY"),
-    api_secret=os.environ.get("CLOUD_API_SECRET")
-)
+# ---- Cloudinary（同時支援 CLOUDINARY_URL 或分開三鍵）----
+cloudinary_url = os.environ.get("CLOUDINARY_URL")
+if cloudinary_url:
+    cloudinary.config(cloudinary_url=cloudinary_url, secure=True)
+else:
+    cloudinary.config(
+        cloud_name=os.environ.get("CLOUD_NAME"),
+        api_key=os.environ.get("CLOUD_API_KEY"),
+        api_secret=os.environ.get("CLOUD_API_SECRET"),
+        secure=True,
+    )
 
 # ---- 題庫（MongoDB practice_questions）----
 try:
     questions_collection = mongo_db.get_collection("practice_questions") if mongo_db else None
 except Exception:
     questions_collection = None
+
+# ---- Cloudinary 直接出題需要的工具 ----
+LABEL_EXPLANATION = {
+    "白苔": "白苔多見於外感風寒或虛寒體質。",
+    "黃苔": "黃苔多見於內熱證，可能為脾胃濕熱。",
+    "灰黑苔": "黑灰多見於寒濕、寒邪內盛。",
+    "紅紫舌無苔": "紅舌多見於陰虛火旺或熱邪內盛。",
+}
+
+def get_cloud_labels(base_folder: str):
+    """從 Cloudinary 讀子資料夾當作標籤；若沒有回傳預設四標籤。"""
+    try:
+        sub = cloudinary.api.subfolders(base_folder)
+        labels = [f["name"] for f in sub.get("folders", [])]
+        if labels:
+            return labels
+    except Exception:
+        pass
+    # 預設四類
+    return ["白苔", "黃苔", "灰黑苔", "紅紫舌無苔"]
+
+def make_cloud_question(base_folder: str):
+    """直接從 Cloudinary 取一題（依子資料夾為標籤）。"""
+    labels = get_cloud_labels(base_folder)
+    correct = random.choice(labels)
+
+    r = cloudinary.api.resources(
+        type="upload", resource_type="image",
+        prefix=f"{base_folder}/{correct}", max_results=200
+    )
+    res = r.get("resources", [])
+    if not res:
+        raise RuntimeError(f"Cloudinary 資料夾空：{base_folder}/{correct}")
+
+    url = random.choice(res).get("secure_url")
+
+    # 四選一（含正解）
+    others = [l for l in labels if l != correct]
+    pick = min(3, len(others))
+    choices = random.sample(others, k=pick) + [correct]
+    random.shuffle(choices)
+
+    return {
+        "question": "請判斷此舌頭的主要顏色為？",
+        "image_url": url,
+        "choices": choices,
+        "correct_answer": correct,  # 供 fallback 模式提交比對
+        "explanation": LABEL_EXPLANATION.get(correct, correct),
+    }
 
 # 健康檢查（Render/監控用）
 @app.get("/healthz")
@@ -76,6 +130,7 @@ def index():
 # =========================
 @app.route("/upload", methods=["POST"])
 def upload_image():
+    # 允許 multipart file 或 base64 data（image 欄位）
     if 'image' not in request.files and 'image' not in request.form:
         return "No image uploaded", 400
 
@@ -83,6 +138,7 @@ def upload_image():
     if not patient_id:
         return "Missing patient ID", 400
 
+    # 讀入位元資料
     image_bytes = None
     fileobj = request.files.get('image')
     if fileobj is not None:
@@ -91,31 +147,39 @@ def upload_image():
         raw = request.form.get('image', '')
         try:
             if raw.startswith('data:'):
+                # data URL
                 _, b64 = raw.split(',', 1)
                 image_bytes = base64.b64decode(b64)
             else:
+                # 純 base64
                 image_bytes = base64.b64decode(raw)
         except Exception:
             return "Invalid image payload", 400
 
     try:
         image_stream = io.BytesIO(image_bytes)
+
+        # 上傳至 Cloudinary（依病患分資料夾）
         up_res = cloudinary.uploader.upload(image_stream, folder=f"tongue/{patient_id}/")
         image_url = up_res.get("secure_url")
 
+        # 暫存檔做分析
         with tempfile.NamedTemporaryFile(delete=False, suffix=".jpg") as tmp:
             tmp.write(image_bytes)
             tmp.flush()
             tmp_path = tmp.name
 
+        # 主色與五區分析
         main_color, comment, advice, rgb = analyze_image_color(tmp_path)
         five_regions = analyze_tongue_regions_with_overlay(tmp_path)
 
+        # 刪暫存
         try:
             os.remove(tmp_path)
         except Exception:
             pass
 
+        # 寫入 MongoDB（歷史紀錄）
         inserted_id = None
         if records_collection is not None:
             record = {
@@ -140,6 +204,7 @@ def upload_image():
             "主色RGB": rgb,
             "五區分析": five_regions
         })
+
     except Exception as e:
         return jsonify({"error": "上傳失敗", "detail": str(e)}), 500
 
@@ -181,7 +246,7 @@ def delete_record():
         if record is None:
             return jsonify({"error": "Record not found"}), 404
 
-        # 建議：上傳時把 public_id 一起存；這裡用 URL 推 public_id 可能不準
+        # 建議：上傳時把 public_id 一起存；此處以 URL 推 public_id（有子資料夾時可能不準）
         public_id = record["image_url"].split("/")[-1].split(".")[0]
         try:
             cloudinary.uploader.destroy(public_id)
@@ -205,35 +270,57 @@ def tongue_teaching():
     return render_template("tongue_teaching.html")
 
 # =========================
-# 題庫式舌象判別練習（隨機從 Mongo/Cloudinary 出題）
+# 題庫式舌象判別練習（Mongo 題庫 → 空時 fallback Cloudinary）
 # =========================
 @app.get("/practice_quiz")
 def practice_quiz():
-    if not questions_collection:
-        return "題庫未連線或未設定", 500
+    # 先試 Mongo 題庫
+    if questions_collection:
+        try:
+            q = next(questions_collection.aggregate([{"$sample": {"size": 1}}]))
+            return render_template("practice.html", question=q, qid=str(q.get("_id")), correct=None)
+        except StopIteration:
+            pass  # 題庫空，改走 Cloudinary
+
+    # Fallback：直接從 Cloudinary 抽題
+    base_folder = os.environ.get("CLOUD_SOURCE_FOLDER", "home")
     try:
-        q = next(questions_collection.aggregate([{"$sample": {"size": 1}}]))
-    except StopIteration:
-        return "題庫目前沒有題目", 404
-    qid = str(q.get("_id"))
-    return render_template("practice.html", question=q, qid=qid)
+        q = make_cloud_question(base_folder)
+        # 沒有 qid，因此用 hidden 傳正解
+        return render_template("practice.html", question=q, qid=None, correct=q["correct_answer"])
+    except Exception as e:
+        return f"無法從 Cloudinary 取題：{e}", 500
 
 @app.post("/submit_practice_answer")
 def submit_practice_answer():
-    if not questions_collection:
-        return "題庫未連線或未設定", 500
-    qid = request.form.get("qid")
+    # 路徑 A：Mongo 題庫（表單帶 qid）
+    if questions_collection:
+        qid = request.form.get("qid")
+        if qid:
+            user_answer = request.form.get("answer")
+            if not user_answer:
+                return "缺少必要參數", 400
+            try:
+                q = questions_collection.find_one({"_id": ObjectId(qid)})
+            except Exception:
+                q = None
+            if not q:
+                return "找不到該題目", 404
+            correct = q.get("correct_answer")
+            explanation = q.get("explanation", "")
+            is_correct = (user_answer == correct)
+            return render_template("result.html",
+                                   user_answer=user_answer,
+                                   correct_answer=correct,
+                                   is_correct=is_correct,
+                                   explanation=explanation)
+
+    # 路徑 B：Cloudinary 直接出題（無 qid，用 hidden 帶正解）
     user_answer = request.form.get("answer")
-    if not qid or not user_answer:
+    correct = request.form.get("correct")
+    if not user_answer or not correct:
         return "缺少必要參數", 400
-    try:
-        q = questions_collection.find_one({"_id": ObjectId(qid)})
-    except Exception:
-        q = None
-    if not q:
-        return "找不到該題目", 404
-    correct = q.get("correct_answer")
-    explanation = q.get("explanation", "")
+    explanation = LABEL_EXPLANATION.get(correct, "")
     is_correct = (user_answer == correct)
     return render_template("result.html",
                            user_answer=user_answer,
@@ -247,16 +334,21 @@ def submit_practice_answer():
 @app.route("/debug/cloudinary")
 def debug_cloudinary():
     try:
-        sub = cloudinary.api.subfolders("home")
+        cfg = cloudinary.config()
+        if not cfg.cloud_name or not (cfg.api_key or cfg.api_secret or cfg.cloudinary_url):
+            return {"error": "Cloudinary 未正確設定。請用 CLOUDINARY_URL 或 CLOUD_NAME/CLOUD_API_KEY/CLOUD_API_SECRET。"}, 500
+
+        base_folder = os.environ.get("CLOUD_SOURCE_FOLDER", "home")
+        sub = cloudinary.api.subfolders(base_folder)
         folders = [f["name"] for f in sub.get("folders", [])]
         sample = {}
         for name in folders:
             r = cloudinary.api.resources(
                 type="upload", resource_type="image",
-                prefix=f"home/{name}", max_results=3
+                prefix=f"{base_folder}/{name}", max_results=3
             )
             sample[name] = [x.get("secure_url") for x in r.get("resources", [])]
-        return {"folders_under_home": folders, "samples": sample}
+        return {"base_folder": base_folder, "folders": folders, "samples": sample}
     except Exception as e:
         return {"error": str(e)}, 500
 
