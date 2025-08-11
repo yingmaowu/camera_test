@@ -4,99 +4,157 @@
   <meta charset="UTF-8" />
   <title>舌象分類教學</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     body {
+      font-family: "Segoe UI", "Noto Sans TC", sans-serif;
       text-align: center;
-      font-family: "Segoe UI", sans-serif;
-      background: #f9f9f9;
       margin: 0;
-      padding: 1rem;
+      padding: 20px;
+      background: #f8fafc;
     }
-    h2 {
-      margin: 1rem;
-      font-weight: 600;
-      font-size: 1.5rem;
-    }
-    #tongueWrapper {
-      position: relative;
-      display: inline-block;
-      border: 1px solid #ccc;
-      border-radius: 12px;
-      background: white;
-      padding: 1rem;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-    }
-    #tongueImg {
-      width: 300px;
-      max-width: 90vw;
-      border-radius: 10px;
-    }
-    .region {
-      position: absolute;
+    h2 { margin: 0 0 12px; }
+    p.hint { margin: 0 0 16px; color:#555; font-size: 0.95rem; }
+    .color-button {
+      margin: 5px;
+      padding: 10px 12px;
+      border-radius: 6px;
+      border: 2px solid #ccc;
       cursor: pointer;
-      background: rgba(255, 192, 203, 0.4); /* 淡粉紅 */
-      border: 2px solid #ff4d4d; /* 紅色邊框 */
-      border-radius: 4px;
-      text-align: center;
-      line-height: 1.2;
-      font-weight: bold;
-      color: #333;
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      min-width: 64px;
+      background: #fff;
     }
-    button {
-      margin: 1rem;
-      padding: 0.8rem 1.5rem;
-      font-size: 1rem;
-      background: #4a90e2;
-      color: white;
+    .toolbar {
+      display:flex; justify-content:center; flex-wrap:wrap; gap:8px; margin-bottom:12px;
+    }
+    svg#tongueMap {
+      width: 100%;
+      max-width: 420px;
+      height: auto;
+      display: block;
+      margin: 12px auto 8px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.08);
+    }
+    #confirm-btn, #clear-btn {
+      margin: 8px;
+      padding: 10px 15px;
       border: none;
       border-radius: 6px;
+      font-size: 0.95rem;
+      background: #2563eb;
+      color: #fff;
       cursor: pointer;
     }
-    button:hover { background-color: #357ABD; }
+    #clear-btn { background: #64748b; }
+    #result {
+      max-width: 520px;
+      margin: 10px auto 0;
+      padding: 12px 14px;
+      background: #ffffff;
+      border-radius: 10px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+      text-align:left;
+      line-height:1.6;
+      font-size: 0.98rem;
+      min-height: 48px;
+    }
   </style>
 </head>
 <body>
   <h2>舌象分類教學</h2>
+  <p class="hint">請先點選舌頭部位，再選擇舌苔顏色，按「確認」查看教學說明。</p>
 
-  <div id="tongueWrapper">
-    <img id="tongueImg" src="{{ url_for('static', filename='overlay.png') }}" alt="舌頭示意圖">
-
-    <!-- 舌根 (略下移+左移) -->
-    <div class="region" style="top: 17%; left: 33%; width: 30%; height: 10%;"
-      onclick="showInfo('舌根', '腎功能', `淡紅：腎功能正常<br>黑灰：腎氣不足<br>苔厚膩：濕熱內蘊`, '建議：作息規律，早睡保暖，避免過度勞累')">舌根</div>
-
-    <!-- 舌中 (上移一點+左移微微) -->
-    <div class="region" style="top: 48%; left: 34%; width: 30%; height: 15%;"
-      onclick="showInfo('舌中', '脾胃功能', `淡紅：脾胃健運<br>苔厚黃：脾胃濕熱<br>苔白滑：脾胃虛寒`, '建議：避免過食油炸寒涼，飲食均衡')">舌中</div>
-
-    <!-- 舌邊 左 (上移+向中間) -->
-    <div class="region" style="top: 38%; left: 22%; width: 20%; height: 20%;"
-      onclick="showInfo('舌邊(左)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
-
-    <!-- 舌邊 右 (上移+向中間) -->
-    <div class="region" style="top: 38%; left: 58%; width: 20%; height: 20%;"
-      onclick="showInfo('舌邊(右)', '肝膽功能', `淡紅：正常<br>紅紫：肝火旺盛<br>齒痕：脾虛`, '建議：保持心情舒暢，避免熬夜')">舌邊</div>
-
-    <!-- 舌尖 (細長+上移略+左移一點) -->
-    <div class="region" style="top: 73%; left: 38%; width: 24%; height: 8%;"
-      onclick="showInfo('舌尖', '心肺功能', `紅潤：心肺功能正常<br>偏紅：火氣旺盛<br>暗淡：血虛氣弱`, '建議：維持規律作息，多喝溫水')">舌尖</div>
+  <!-- 顏色按鈕 -->
+  <div class="toolbar">
+    <button class="color-button" onclick="selectColor('white')" style="background:white;">白色</button>
+    <button class="color-button" onclick="selectColor('yellow')" style="background:gold;">黃色</button>
+    <button class="color-button" onclick="selectColor('black')" style="background:black; color:white;">黑色</button>
+    <button class="color-button" onclick="selectColor('red')" style="background:red; color:white;">紅色</button>
   </div>
 
-  <br>
-  <button onclick="history.back()">上一頁</button>
+  <!-- 舌頭圖片與互動區塊（使用教學靜態圖） -->
+  <svg id="tongueMap" viewBox="0 0 1024 1536" preserveAspectRatio="xMidYMid meet" aria-label="舌頭示意圖互動地圖">
+    <image href="{{ url_for('static', filename='teaching/tongue-diagram.jpg') }}"
+      x="0" y="0" width="1024" height="1536" />
+
+    <!-- 可點選區塊（若未對齊，可依實際圖片調整 x/y/width/height） -->
+    <g id="regionGroup" fill-opacity="0.4">
+      <rect id="腎"   x="380" y="100"  width="200" height="100" fill="transparent" stroke="gray" stroke-width="2" />
+      <rect id="肝"   x="180" y="450"  width="180" height="150" fill="transparent" stroke="gray" stroke-width="2" />
+      <rect id="膽"   x="660" y="450"  width="180" height="150" fill="transparent" stroke="gray" stroke-width="2" />
+      <rect id="脾胃" x="400" y="750"  width="200" height="150" fill="transparent" stroke="gray" stroke-width="2" />
+      <rect id="心肺" x="420" y="1050" width="180" height="150" fill="transparent" stroke="gray" stroke-width="2" />
+    </g>
+  </svg>
+
+  <div>
+    <button id="clear-btn"  onclick="clearSelection()">清除</button>
+    <button id="confirm-btn" onclick="showResult()">確認</button>
+    <button onclick="history.back()" style="margin:8px; padding:10px 15px; border:none; border-radius:6px;">上一頁</button>
+  </div>
+
+  <!-- 結果顯示區 -->
+  <div id="result" role="status" aria-live="polite"></div>
 
   <script>
-    function showInfo(region, organ, info, advice) {
-      Swal.fire({
-        title: `${region} (${organ})`,
-        html: `<div style="text-align:left;font-size:1rem;line-height:1.5;">${info}<br><br><b>${advice}</b></div>`,
-        icon: "info",
-        confirmButtonText: "了解"
+    let selectedRegion = null;
+    let selectedColor = null;
+
+    // 點選區塊選部位
+    document.querySelectorAll('#regionGroup rect').forEach(rect => {
+      rect.addEventListener('click', () => {
+        selectedRegion = rect.id;
+        highlightRegion();
       });
+    });
+
+    function selectColor(color) {
+      selectedColor = color;
+      highlightRegion();
+    }
+
+    function highlightRegion() {
+      document.querySelectorAll('#regionGroup rect').forEach(rect => {
+        if (rect.id === selectedRegion && selectedColor) {
+          rect.setAttribute('fill', selectedColor);
+        } else {
+          rect.setAttribute('fill', 'transparent');
+        }
+      });
+    }
+
+    function clearSelection() {
+      selectedRegion = null;
+      selectedColor  = null;
+      document.getElementById('result').innerHTML = '';
+      document.querySelectorAll('#regionGroup rect').forEach(rect => rect.setAttribute('fill', 'transparent'));
+    }
+
+    // 展示結果（目前示例資料，可日後擴充成外部 JSON/JS 檔）
+    function showResult() {
+      const resultBox = document.getElementById('result');
+      if (!selectedRegion || !selectedColor) {
+        resultBox.innerHTML = '<p>請先選擇部位與顏色。</p>';
+        return;
+      }
+      const key = `${selectedRegion}_${selectedColor}`;
+      const data = {
+        '腎_white':  { message:'腎陽虛，腰痠怕冷。', herb:'中藥建議：附子、杜仲。', classic:'—' },
+        '脾胃_yellow': { message:'脾胃濕熱，口苦納呆。', herb:'中藥建議：黃連、茯苓。', classic:'—' },
+        '心肺_red': { message:'心火旺盛，舌紅煩躁。', herb:'中藥建議：蓮子心、丹參。', classic:'—' }
+      };
+      if (data[key]) {
+        resultBox.innerHTML = `
+          <p><strong>選擇部位：</strong>${selectedRegion}</p>
+          <p><strong>選擇顏色：</strong>${selectedColor}</p>
+          <p><strong>分析結果：</strong>${data[key].message}</p>
+          <p>${data[key].herb}</p>
+          <p><em>${data[key].classic}</em></p>
+        `;
+      } else {
+        resultBox.innerHTML = `<p>此組合尚未設定：${selectedRegion} + ${selectedColor}</p>`;
+      }
     }
   </script>
 </body>
