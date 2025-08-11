@@ -43,6 +43,12 @@ cloudinary.config(
     cloud_name=os.environ.get("CLOUD_NAME"),
     api_key=os.environ.get("CLOUD_API_KEY"),
     api_secret=os.environ.get("CLOUD_API_SECRET")
+
+# ---- 題庫（MongoDB practice_questions）----
+try:
+    questions_collection = mongo_db.get_collection("practice_questions") if mongo_db else None
+except Exception:
+    questions_collection = None
 )
 
 # 健康檢查（Render/監控用）
@@ -211,6 +217,44 @@ def teaching():
 def tongue_teaching():
     return render_template("tongue_teaching.html")
 
+
+# =========================
+# 題庫式舌象判別練習（隨機從 Mongo/Cloudinary 出題）
+# =========================
+@app.get("/practice_quiz")
+def practice_quiz():
+    if not questions_collection:
+        return "題庫未連線或未設定", 500
+    try:
+        q = next(questions_collection.aggregate([{"$sample": {"size": 1}}]))
+    except StopIteration:
+        return "題庫目前沒有題目", 404
+    # 將 _id 轉為字串給表單提交使用
+    qid = str(q.get("_id"))
+    return render_template("practice.html", question=q, qid=qid)
+
+@app.post("/submit_practice_answer")
+def submit_practice_answer():
+    if not questions_collection:
+        return "題庫未連線或未設定", 500
+    qid = request.form.get("qid")
+    user_answer = request.form.get("answer")
+    if not qid or not user_answer:
+        return "缺少必要參數", 400
+    try:
+        q = questions_collection.find_one({"_id": ObjectId(qid)})
+    except Exception:
+        q = None
+    if not q:
+        return "找不到該題目", 404
+    correct = q.get("correct_answer")
+    explanation = q.get("explanation", "")
+    is_correct = (user_answer == correct)
+    return render_template("result.html",
+                           user_answer=user_answer,
+                           correct_answer=correct,
+                           is_correct=is_correct,
+                           explanation=explanation)
 # =========================
 # Debug
 # =========================
