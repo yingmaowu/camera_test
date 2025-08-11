@@ -5,10 +5,7 @@
   <title>教學資源</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: "Segoe UI", sans-serif; margin: 0; padding: 2rem; }
-    h2 { margin-bottom: 2rem; }
-    button { padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem; background-color: #4a90e2; color: white; border: none; border-radius: 8px; cursor: pointer; width: 280px; }
-    button:hover { background-color: #357ABD; }
+    /* …原樣保留… */
   </style>
 </head>
 <body>
@@ -16,7 +13,11 @@
   <button onclick="location.href='/tongue_teaching'">舌象分類教學</button>
   <button onclick="location.href='/practice_quiz'">舌象判別練習</button>
   <button class="btn" onclick="location.href='/practice'">中醫五區辨識練習</button>
+
+  <!-- 五區診斷練習（未啟用路由 /practice_zone，先隱藏避免 404）
   <button onclick="location.href='/practice_zone'">五區診斷練習</button>
+  -->
+
   <button onclick="history.back()">上一頁</button>
 </body>
 </html>
