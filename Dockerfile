@@ -1,4 +1,3 @@
-# 使用完整的 python image 而非 slim
 FROM python:3.10
 
 WORKDIR /app
@@ -10,8 +9,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# 切到有 app.py 的資料夾
-WORKDIR /app/camera_test-main
-
-# 用 /bin/sh -c 才會展開 $PORT；並提供預設 8080（${PORT:-8080}）
-CMD ["sh","-c","gunicorn app:app --workers 2 --threads 4 --timeout 120 --log-level debug -b 0.0.0.0:${PORT:-8080}"]
+# 以條件切換子資料夾：若存在 camera_test-main/app.py 則進去，否則留在 /app
+CMD ["sh","-c","if [ -f camera_test-main/app.py ]; then cd camera_test-main; fi; exec gunicorn app:app --workers 2 --threads 4 --timeout 120 --log-level debug -b 0.0.0.0:${PORT:-8080}"]
