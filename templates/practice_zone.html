@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>五區診斷練習</title>
+</head>
+<body>
+  <h2>{{ question.question }}</h2>
+  <img src="{{ question.image_url }}" alt="舌照" width="400"><br><br>
+  <form method="POST" action="/submit_zone_answer">
+    {% for zone, info in question.zones.items() %}
+      <h4>{{ info.question }}</h4>
+      {% for choice in info.choices %}
+        <label>
+          <input type="radio" name="{{ zone }}" value="{{ choice }}" required> {{ choice }}
+        </label><br>
+      {% endfor %}
+      <br>
+    {% endfor %}
+    <button type="submit">提交答案</button>
+  </form>
+</body>
+</html>

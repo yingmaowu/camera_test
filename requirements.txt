@@ -1,0 +1,8 @@
+flask
+pillow
+numpy
+cloudinary>=1.41.0
+pymongo
+python-dotenv
+gunicorn
+opencv-python

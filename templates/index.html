@@ -1,0 +1,114 @@
+
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <title>舌苔辨識相機</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #f0f0f0; text-align: center; }
+    h2 { margin-top: 1rem; }
+    #videoWrapper { position: relative; width: 100%; max-width: 500px; margin: auto; overflow: hidden; aspect-ratio: 3/4; background: black; }
+    video { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; }
+    #overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; z-index: 10; }
+    button { margin: 1rem 0.5rem; padding: 0.6rem 1.2rem; font-size: 1.1rem; border: none; border-radius: 6px; background: #4a90e2; color: white; cursor: pointer; }
+    button:hover { background-color: #357ABD; }
+  </style>
+</head>
+<body>
+  <h2>舌苔辨識相機</h2>
+  <div id="videoWrapper">
+    <video id="camera" autoplay playsinline muted></video>
+    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay">
+  </div>
+  <div>
+    <button id="captureBtn">拍照</button>
+    <button id="historyBtn">查看歷史照片</button>
+    <button onclick="history.back()">上一頁</button>
+  </div>
+
+  <script>
+    const video = document.getElementById("camera");
+    const overlay = document.getElementById("overlay");
+    const captureBtn = document.getElementById("captureBtn");
+    const historyBtn = document.getElementById("historyBtn");
+    const urlParams = new URLSearchParams(window.location.search);
+    const patientId = urlParams.get("patient") || "unknown";
+
+    // 解決返回上一頁相機黑畫面問題
+    window.addEventListener("pageshow", function(event) {
+      if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
+        window.location.reload();
+      }
+    });
+
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
+      .then(stream => {
+        video.srcObject = stream;
+        return new Promise(resolve => {
+          video.onloadedmetadata = () => {
+            video.play();
+            resolve();
+          };
+        });
+      })
+      .catch(err => {
+        Swal.fire("❌ 相機啟動失敗", err.message, "error");
+      });
+
+    let capturedBlob = null;
+
+    function captureImage() {
+      const canvas = document.createElement("canvas");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
+      return new Promise(resolve => {
+        canvas.toBlob(blob => {
+          capturedBlob = blob;
+          resolve();
+        }, "image/jpeg");
+      });
+    }
+
+    captureBtn.addEventListener("click", async () => {
+      await captureImage();
+      Swal.fire({
+        title: "確定要上傳這張照片嗎？",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "上傳",
+        cancelButtonText: "取消"
+      }).then(result => {
+        if (result.isConfirmed && capturedBlob) {
+          const formData = new FormData();
+          formData.append("image", capturedBlob, "tongue.jpg");
+          formData.append("patient_id", patientId);
+
+          fetch("/upload", { method: "POST", body: formData })
+            .then(res => res.json())
+            .then(data => {
+              if (data.success) {
+                Swal.fire("✅ 上傳成功", "即將跳轉至健康紀錄", "success").then(() => {
+                  window.location.href = `/history?patient=${patientId}`;
+                });
+              } else {
+                Swal.fire("❌ 上傳失敗", data.error || "請稍後再試", "error");
+              }
+            })
+            .catch(err => {
+              Swal.fire("❌ 錯誤", err.message, "error");
+            });
+        }
+      });
+    });
+
+    historyBtn.addEventListener("click", () => {
+      window.location.href = `/history?patient=${patientId}`;
+    });
+  </script>
+</body>
+</html>
