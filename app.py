@@ -213,6 +213,10 @@ def teaching():
 def tongue_teaching():
     return render_template("tongue_teaching.html")
 
+@app.route("/tongue_teaching_static")
+def tongue_teaching_static():
+    return render_template("tongue_teaching_static.html")
+
 # =========================
 # Debug
 # =========================
