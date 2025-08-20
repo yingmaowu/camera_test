@@ -10,6 +10,7 @@ import cloudinary.uploader
 from cloud_quiz_search import get_random_cloudinary_question
 import cloudinary.api
 from cloudinary.search import Search
+from tongue_quiz_data import quiz_data
 
 from color_analysis import analyze_image_color
 from color_analysis_overlay import analyze_tongue_regions_with_overlay
@@ -258,6 +259,19 @@ def debug_cloudinary():
                 out["cats"][folder] = {"error": str(e)}
     return out, 200, {"Content-Type": "application/json; charset=utf-8"}
 
+@app.route("/tongue_quiz")
+def tongue_quiz():
+    return render_template("tongue_quiz.html")
+
+@app.route("/tongue_quiz_data")
+def tongue_quiz_data():
+    # 回傳題庫（question, options, answer）
+    return jsonify(quiz_data)
+
+@app.route("/tongue_quiz_answers")
+def tongue_quiz_answers():
+    # 只回傳答案陣列（如需在前端比對用）
+    return jsonify([{ "answer": q.get("answer") } for q in quiz_data])
 
 # =========================
 # 掛載 Blueprint（新專案練習頁）
