@@ -253,44 +253,104 @@ def _get_mongo_collection():
     db = client.get_database("tongueDB")
     return db.get_collection("practice_questions")
 
+
 @app.route("/quiz", methods=["GET"])
 def quiz():
-    """從 MongoDB practice_questions 隨機抽一題並呈現 templates/practice.html"""
-    col = _get_mongo_collection()
-    doc = col.aggregate([{"$sample": {"size": 1}}]).next()
-    # 將 _id 轉為字串，避免 Jinja/表單處理問題
-    qid = str(doc.get("_id"))
-    return render_template("practice.html", question=doc, qid=qid)
+    """（新）從 Cloudinary 隨機抽圖出題，題目存於 session['practice_cloudinary']。"""
+    # 確認 Cloudinary 設定
+    if not (os.environ.get("CLOUD_NAME") and os.environ.get("CLOUD_API_KEY") and os.environ.get("CLOUD_API_SECRET")):
+        return "缺少 Cloudinary 環境變數（CLOUD_NAME, CLOUD_API_KEY, CLOUD_API_SECRET）", 500
 
+    root = os.environ.get("CLOUD_TONGUE_ROOT", "home")
+    try:
+        # 1) 取得根資料夾下的子資料夾作為類別
+        subs = cloudinary.api.subfolders(root)
+        cats = [f.get("name").split("/", 1)[-1] for f in subs.get("folders", [])] or []
+        prefixes = [f"{root}/{c}" for c in cats] if cats else [root]
+
+        # 2) 蒐集資源並隨機挑一張
+        resources = []
+        for prefix in prefixes:
+            r = cloudinary.api.resources(type="upload", prefix=prefix, resource_type="image", max_results=100, context=True)
+            resources.extend(r.get("resources", []))
+
+        if not resources:
+            return "Cloudinary 中找不到任何圖片，請確認資料夾與權限。", 500
+
+        import random as _rnd
+        res = _rnd.choice(resources)
+        image_url = res.get("secure_url") or res.get("url") or ""
+        public_id = res.get("public_id", "")
+
+        # 3) 由 public_id 推斷正解（root/類別/...）
+        answer = ""
+        if "/" in public_id:
+            parts = public_id.split("/")
+            # 允許 public_id = root/category/filename 或 category/filename
+            if parts[0] == root and len(parts) >= 2:
+                answer = parts[1]
+            elif parts:
+                # 若不是以 root 開頭，取第一段當類別
+                answer = parts[0]
+        answer = answer or "未知類別"
+
+        # 4) 準備四個選項
+        choices = cats or ["白苔", "黃苔", "灰黑苔", "紅紫舌無苔"]
+        if answer not in choices:
+            choices = choices + [answer]
+        _rnd.shuffle(choices)
+        choices = choices[:4] if len(choices) >= 4 else choices
+
+        # 5) 記到 session
+        session["practice_cloudinary"] = {
+            "image_url": image_url,
+            "public_id": public_id,
+            "category": answer,
+            "choices": choices,
+            "explanation": f"此題由 Cloudinary 資料夾「{root}/{answer}」隨機抽取。"
+        }
+
+        return render_template("practice.html", qid="", image_url=image_url, choices=choices, question="請判斷此舌象類別")
+    except Exception as e:
+        return f"載入 Cloudinary 題目失敗：{e}", 500
 @app.route("/submit_practice_answer", methods=["POST"])
 def submit_practice_answer():
-    """接收使用者作答，對照正確答案並顯示結果"""
-    user_answer = request.form.get("answer")
-    qid = request.form.get("qid")
-    if not qid:
-        return "缺少題目 ID", 400
+    """（新）優先驗證 Cloudinary 題目（session）；有 qid 時回退至 Mongo 題庫。"""
+    data = request.form or request.json or {}
+    user_answer = (data.get("answer") or "").strip()
+    qid = (data.get("qid") or "").strip()
 
-    col = _get_mongo_collection()
-    doc = col.find_one({"_id": ObjectId(qid)})
-    if not doc:
-        return "找不到題目", 404
+    sess_q = session.get("practice_cloudinary")
+    if sess_q and not qid:
+        correct = sess_q.get("category", "")
+        is_correct = (user_answer == correct)
+        explanation = sess_q.get("explanation", "")
+        # 清掉 session 題目
+        session.pop("practice_cloudinary", None)
+        return render_template("result.html",
+                               user_answer=user_answer,
+                               correct_answer=correct,
+                               explanation=explanation,
+                               is_correct=is_correct)
 
-    correct = doc.get("correct_answer")
-    explanation = doc.get("explanation", "")
+    # 回退：Mongo 題庫
+    try:
+        q = questions_col.find_one({"_id": ObjectId(qid)}) if qid else None
+    except Exception:
+        q = None
+
+    if not q:
+        return render_template("result.html",
+                               user_answer=user_answer,
+                               correct_answer="（無）",
+                               explanation="找不到題目，請重新出題。",
+                               is_correct=False)
+
+    correct = q.get("answer")
     is_correct = (user_answer == correct)
-
-    return render_template(
-        "result.html",
-        user_answer=user_answer,
-        correct_answer=correct,
-        explanation=explanation,
-        is_correct=is_correct
-    )
-
-
-# =========================
-# 入口（本機啟動）
-# =========================
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    explanation = q.get("explanation", "")
+    return render_template("result.html",
+                           user_answer=user_answer,
+                           correct_answer=correct,
+                           explanation=explanation,
+                           is_correct=is_correct)
