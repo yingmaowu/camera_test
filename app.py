@@ -266,12 +266,15 @@ def quiz():
     root = os.environ.get("CLOUD_TONGUE_ROOT", "home")
     q = get_random_cloudinary_question(root_folder=root)
     session["practice_cloudinary"] = q
+    question_payload = {
+        "question": "請判斷此舌象類別",
+        "image_url": q.get("image_url", ""),
+        "choices": q.get("choices", [])
+    }
     return render_template(
         "practice.html",
         qid="",
-        image_url=q.get("image_url", ""),
-        choices=q.get("choices", []),
-        question="請判斷此舌象類別",
+        question=question_payload,
     )
 
 @app.route("/submit_practice_answer", methods=["POST"])
