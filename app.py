@@ -216,21 +216,44 @@ def tongue_teaching():
 # =========================
 # Debug
 # =========================
+from cloudinary.search import Search
+
+def _roots_from_env():
+    import os
+    roots_env = os.environ.get("CLOUD_TONGUE_ROOTS")
+    if roots_env is not None:
+        roots = [r.strip().strip('/') for r in roots_env.split(',')]
+        return roots or [""]
+    single = os.environ.get("CLOUD_TONGUE_ROOT")
+    if single is not None:
+        single = single.strip().strip('/')
+        return [single] if single != "" else [""]
+    # 預設同時支援 home/ 與根目錄
+    return ["home", ""]
+
 @app.route("/debug/cloudinary")
 def debug_cloudinary():
-    try:
-        sub = cloudinary.api.subfolders("home")
-        folders = [f["name"] for f in sub.get("folders", [])]
-        sample = {}
-        for name in folders:
-            r = cloudinary.api.resources(
-                type="upload", resource_type="image",
-                prefix=f"home/{name}", max_results=3
-            )
-            sample[name] = [x.get("secure_url") for x in r.get("resources", [])]
-        return {"folders_under_home": folders, "samples": sample}
-    except Exception as e:
-        return {"error": str(e)}, 500
+    import cloudinary
+    roots = _roots_from_env()
+    out = {
+        "cloud_name": cloudinary.config().cloud_name,
+        "roots": roots,
+        "cats": {}
+    }
+    cats = ["白苔", "黃苔", "灰黑苔", "紅紫舌無苔"]
+    for root in roots:
+        for cat in cats:
+            folder = f"{cat}" if root == "" else f"{root}/{cat}"
+            try:
+                res = Search().expression(f'folder="{folder}"').max_results(5).execute()
+                out["cats"][folder] = {
+                    "count": len(res.get("resources", []) or []),
+                    "sample_public_ids": [r.get("public_id") for r in res.get("resources", [])]
+                }
+            except Exception as e:
+                out["cats"][folder] = {"error": str(e)}
+    return out, 200, {"Content-Type": "application/json; charset=utf-8"}
+
 
 # =========================
 # 掛載 Blueprint（新專案練習頁）
