@@ -7,7 +7,9 @@ from bson import ObjectId
 
 import cloudinary
 import cloudinary.uploader
+from cloud_quiz_search import get_random_cloudinary_question
 import cloudinary.api
+from cloudinary.search import Search
 
 from color_analysis import analyze_image_color
 from color_analysis_overlay import analyze_tongue_regions_with_overlay
@@ -254,70 +256,30 @@ def _get_mongo_collection():
     return db.get_collection("practice_questions")
 
 
-@app.route("/quiz", methods=["GET"])
+@app.route("/quiz")
 def quiz():
-    """（新）從 Cloudinary 隨機抽圖出題，題目存於 session['practice_cloudinary']。"""
-    # 確認 Cloudinary 設定
-    if not (os.environ.get("CLOUD_NAME") and os.environ.get("CLOUD_API_KEY") and os.environ.get("CLOUD_API_SECRET")):
-        return "缺少 Cloudinary 環境變數（CLOUD_NAME, CLOUD_API_KEY, CLOUD_API_SECRET）", 500
-
+    """（Cloudinary Search 版）直接從 Cloudinary 的根資料夾隨機抽圖出題。
+    根資料夾預設為環境變數 CLOUD_TONGUE_ROOT（預設 'home'）。
+    會將題目放入 session['practice_cloudinary'] 以便提交時比對。
+    """
+    import os
     root = os.environ.get("CLOUD_TONGUE_ROOT", "home")
-    try:
-        # 1) 取得根資料夾下的子資料夾作為類別
-        subs = cloudinary.api.subfolders(root)
-        cats = [f.get("name").split("/", 1)[-1] for f in subs.get("folders", [])] or []
-        prefixes = [f"{root}/{c}" for c in cats] if cats else [root]
+    q = get_random_cloudinary_question(root_folder=root)
+    session["practice_cloudinary"] = q
+    return render_template(
+        "practice.html",
+        qid="",
+        image_url=q.get("image_url", ""),
+        choices=q.get("choices", []),
+        question="請判斷此舌象類別",
+    )
 
-        # 2) 蒐集資源並隨機挑一張
-        resources = []
-        for prefix in prefixes:
-            r = cloudinary.api.resources(type="upload", prefix=prefix, resource_type="image", max_results=100, context=True)
-            resources.extend(r.get("resources", []))
-
-        if not resources:
-            return "Cloudinary 中找不到任何圖片，請確認資料夾與權限。", 500
-
-        import random as _rnd
-        res = _rnd.choice(resources)
-        image_url = res.get("secure_url") or res.get("url") or ""
-        public_id = res.get("public_id", "")
-
-        # 3) 由 public_id 推斷正解（root/類別/...）
-        answer = ""
-        if "/" in public_id:
-            parts = public_id.split("/")
-            # 允許 public_id = root/category/filename 或 category/filename
-            if parts[0] == root and len(parts) >= 2:
-                answer = parts[1]
-            elif parts:
-                # 若不是以 root 開頭，取第一段當類別
-                answer = parts[0]
-        answer = answer or "未知類別"
-
-        # 4) 準備四個選項
-        choices = cats or ["白苔", "黃苔", "灰黑苔", "紅紫舌無苔"]
-        if answer not in choices:
-            choices = choices + [answer]
-        _rnd.shuffle(choices)
-        choices = choices[:4] if len(choices) >= 4 else choices
-
-        # 5) 記到 session
-        session["practice_cloudinary"] = {
-            "image_url": image_url,
-            "public_id": public_id,
-            "category": answer,
-            "choices": choices,
-            "explanation": f"此題由 Cloudinary 資料夾「{root}/{answer}」隨機抽取。"
-        }
-
-        return render_template("practice.html", qid="", image_url=image_url, choices=choices, question="請判斷此舌象類別")
-    except Exception as e:
-        return f"載入 Cloudinary 題目失敗：{e}", 500
 @app.route("/submit_practice_answer", methods=["POST"])
 def submit_practice_answer():
-    """（新）優先驗證 Cloudinary 題目（session）；有 qid 時回退至 Mongo 題庫。"""
+    """優先驗證 Cloudinary 題目（session）；有 qid 時才回退舊 Mongo 題庫。"""
+    from bson import ObjectId
     data = request.form or request.json or {}
-    user_answer = (data.get("answer") or "").strip()
+    user_answer = data.get("answer")
     qid = (data.get("qid") or "").strip()
 
     sess_q = session.get("practice_cloudinary")
@@ -325,32 +287,36 @@ def submit_practice_answer():
         correct = sess_q.get("category", "")
         is_correct = (user_answer == correct)
         explanation = sess_q.get("explanation", "")
-        # 清掉 session 題目
         session.pop("practice_cloudinary", None)
-        return render_template("result.html",
-                               user_answer=user_answer,
-                               correct_answer=correct,
-                               explanation=explanation,
-                               is_correct=is_correct)
+        return render_template(
+            "result.html",
+            user_answer=user_answer or "",
+            correct_answer=correct,
+            explanation=explanation,
+            is_correct=is_correct,
+        )
 
-    # 回退：Mongo 題庫
+    # 回退：Mongo 題庫（若仍保留）
     try:
         q = questions_col.find_one({"_id": ObjectId(qid)}) if qid else None
     except Exception:
         q = None
-
     if not q:
-        return render_template("result.html",
-                               user_answer=user_answer,
-                               correct_answer="（無）",
-                               explanation="找不到題目，請重新出題。",
-                               is_correct=False)
-
+        return render_template(
+            "result.html",
+            user_answer=user_answer or "",
+            correct_answer="（無）",
+            explanation="找不到題目或題庫尚未初始化，請重新出題。",
+            is_correct=False,
+        )
     correct = q.get("answer")
     is_correct = (user_answer == correct)
     explanation = q.get("explanation", "")
-    return render_template("result.html",
-                           user_answer=user_answer,
-                           correct_answer=correct,
-                           explanation=explanation,
-                           is_correct=is_correct)
+    return render_template(
+        "result.html",
+        user_answer=user_answer,
+        correct_answer=correct,
+        explanation=explanation,
+        is_correct=is_correct,
+    )
+
