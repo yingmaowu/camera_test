@@ -1,110 +1,119 @@
 import os, random
 import cloudinary
 from cloudinary.search import Search
-from typing import List, Dict
 
+# Root folder in Cloudinary that contains subfolders per category, e.g. 'home'
 DEFAULT_ROOT = os.environ.get("CLOUD_TONGUE_ROOT", "home")
 
-IMAGE_FORMATS = {"jpg", "jpeg", "png", "webp", "gif"}
+# Allowed image formats as a fallback filter (in case resource_type is missing)
+ALLOWED_EXT = {"jpg", "jpeg", "png", "webp", "gif"}
 
 def _norm_root(root: str) -> str:
-    return (root or "home").strip().strip("/") or "home"
+    root = (root or "").strip().strip("/")
+    return root or "home"
 
-def _search_under_root(root: str) -> Dict:
-    root = _norm_root(root)
-    # Do NOT restrict resource_type here; some uploads may be 'raw' by mistake.
-    return Search() \
-        .expression(f'folder:"{root}/*"') \
-        .with_field("public_id") \
-        .with_field("resource_type") \
-        .with_field("format") \
-        .max_results(500) \
-        .execute()
+def _search_under_root(root_folder: str, max_results: int = 500):
+    """Return list of resources under root_folder using Cloudinary Search API.
 
-def _group_by_category(resources: List[Dict], root: str) -> Dict[str, List[Dict]]:
-    root = _norm_root(root)
-    cats = {}
-    prefix = root + "/"
-    for r in resources:
-        pid = r.get("public_id","")
-        if not pid.startswith(prefix):
-            continue
-        tail = pid[len(prefix):]  # e.g. '白苔/img123'
-        cat = tail.split("/", 1)[0] if tail else ""
-        if not cat:
-            continue
-        cats.setdefault(cat, []).append(r)
-    return cats
+    IMPORTANT: Do NOT use with_field('public_id', ...) etc — not supported.
+    We just request resources and filter client-side.
+    """
+    root_folder = _norm_root(root_folder)
+    expr = f'folder:"{root_folder}/*" AND resource_type:image'
+    # Execute search; returns dict with 'resources' and possibly 'next_cursor'
+    result = Search().expression(expr).max_results(min(max_results, 500)).execute()
+    return result.get("resources", [])
 
-def _pick_random_image_resource(resources: List[Dict]) -> Dict:
-    # First try true image resources
-    imgs = [r for r in resources if r.get("resource_type") == "image"]
-    if not imgs:
-        # If none, try those with image-like formats (some may have been uploaded as raw)
-        imgs = [r for r in resources if (r.get("format") or "").lower() in IMAGE_FORMATS]
-    if not imgs:
-        return {}
-    return random.choice(imgs)
+def _extract_category(public_id: str, root_folder: str):
+    # public_id looks like 'home/白苔/xxx' -> return '白苔'
+    root_prefix = f"{root_folder}/"
+    if public_id.startswith(root_prefix):
+        tail = public_id[len(root_prefix):]
+        return tail.split("/", 1)[0]
+    return None
+
+def _is_image_resource(res: dict):
+    # Cloudinary sets 'resource_type'=='image' and 'format' for images
+    rt = res.get("resource_type")
+    if rt and rt != "image":
+        return False
+    fmt = (res.get("format") or "").lower()
+    if fmt and fmt not in ALLOWED_EXT:
+        # if format exists and is not an image type, skip
+        return False
+    return True
 
 def get_random_cloudinary_question(root_folder: str = DEFAULT_ROOT, fallback_categories=None):
     root_folder = _norm_root(root_folder)
     if fallback_categories is None:
         fallback_categories = ["白苔", "黃苔", "灰黑苔", "紅紫舌無苔"]
 
-    result = _search_under_root(root_folder)
-    resources = result.get("resources", [])
-    cats = _group_by_category(resources, root_folder)
-    if not cats:
-        # Nothing under the root
+    resources = _search_under_root(root_folder)
+
+    # Filter to images and group by category
+    by_cat = {}
+    for r in resources:
+        if not _is_image_resource(r):
+            continue
+        pid = r.get("public_id") or ""
+        cat = _extract_category(pid, root_folder)
+        if not cat:
+            continue
+        by_cat.setdefault(cat, []).append(r)
+
+    categories = list(by_cat.keys()) or list(fallback_categories)
+
+    # Choose a category uniformly
+    cat = random.choice(categories)
+
+    # Pick a resource in that category (if available)
+    chosen = None
+    if by_cat.get(cat):
+        chosen = random.choice(by_cat[cat])
+    else:
+        # Fallback: pick any resource
+        flat = [r for lst in by_cat.values() for r in lst]
+        if flat:
+            chosen = random.choice(flat)
+
+    if not chosen:
+        # Total fallback (no resources found): synthetic question
+        choices = categories[:]
+        random.shuffle(choices)
+        if len(choices) < 4:
+            pad = [c for c in fallback_categories if c not in choices]
+            random.shuffle(pad)
+            choices = (choices + pad)[:4]
+        else:
+            choices = choices[:4]
         return {
             "image_url": "",
             "public_id": "",
-            "category": random.choice(fallback_categories),
-            "choices": fallback_categories,
-            "explanation": "Cloudinary 的資料夾下沒有可用的圖片（可能是沒有資源或權限不足）。"
+            "category": random.choice(categories),
+            "choices": choices,
+            "explanation": "Cloudinary 中找不到任何圖片，請確認資料夾與權限。"
         }
 
-    # Randomly pick a category that actually has at least one usable resource
-    viable = [(cat, lst) for cat, lst in cats.items() if lst]
-    if not viable:
-        return {
-            "image_url": "",
-            "public_id": "",
-            "category": random.choice(list(cats.keys()) or fallback_categories),
-            "choices": fallback_categories,
-            "explanation": "找到資料夾，但裡面沒有可用的圖片（可能是被當成 raw 上傳）。"
-        }
-
-    cat, lst = random.choice(viable)
-    res = _pick_random_image_resource(lst)
-    if not res:
-        return {
-            "image_url": "",
-            "public_id": "",
-            "category": cat,
-            "choices": fallback_categories,
-            "explanation": f"「{root_folder}/{cat}」沒有可用的 image 資源（可能是 raw 上傳）。"
-        }
-
-    # Build delivery URL (works for images)
-    # Prefer secure URL from delivery, else construct with CloudinaryImage
-    try:
-        from cloudinary.utils import cloudinary_url
-        url, _ = cloudinary_url(res["public_id"], secure=True, resource_type=res.get("resource_type","image"))
-    except Exception:
-        url = ""
-
-    choices = list({*cats.keys(), *fallback_categories})
+    image_url = chosen.get("secure_url") or chosen.get("url") or ""
+    # Build multiple-choice options
+    choices = list(dict.fromkeys(categories))
     random.shuffle(choices)
-    choices = choices[:4] if len(choices) >= 4 else (choices + [c for c in fallback_categories if c not in choices])[:4]
-    if cat not in choices and choices:
-        choices[random.randrange(len(choices))] = cat
+    if len(choices) < 4:
+        pad = [c for c in fallback_categories if c not in choices]
+        random.shuffle(pad)
+        choices = (choices + pad)[:4]
+    else:
+        choices = choices[:4]
+    if cat not in choices:
+        idx = random.randrange(len(choices))
+        choices[idx] = cat
         random.shuffle(choices)
 
     explanation = f"此題由 Cloudinary 資料夾「{root_folder}/{cat}」隨機抽取。"
+
     return {
-        "image_url": url,
-        "public_id": res.get("public_id",""),
+        "image_url": image_url,
+        "public_id": chosen.get("public_id", ""),
         "category": cat,
         "choices": choices,
         "explanation": explanation,
