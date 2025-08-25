@@ -3,17 +3,15 @@
 {% block content %}
 <div class="card">
   <h1>舌苔辨識相機</h1>
-  <p class="muted">請將舌頭對準疊圖範圍，保持光線均勻再拍照。</p>
+  <p class="muted">對準疊圖範圍，保持光線均勻再拍照。</p>
 
-  <!-- 相機容器 -->
-  <div id="videoWrapper" style="position:relative; width:100%; max-width:500px; margin:auto; overflow:hidden; aspect-ratio:3/4; background:black; border-radius:12px">
-    <video id="camera" autoplay playsinline muted style="width:100%; height:100%; object-fit:cover; border-radius:12px"></video>
+  <div id="videoWrapper" class="card" style="position:relative; width:100%; max-width:520px; margin:auto; overflow:hidden; aspect-ratio:3/4; background:#000">
+    <video id="camera" autoplay playsinline muted style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:12px"></video>
     <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay"
-         style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; z-index:10;">
+         style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; z-index:10; opacity:.6;">
   </div>
 
-  <!-- 操作按鈕 -->
-  <div class="sticky-actions flex center" style="justify-content:center; margin-top:16px">
+  <div class="sticky-actions btn-group" style="margin-top:12px">
     <button id="captureBtn" class="btn">📸 拍照並上傳</button>
     <button id="historyBtn" class="btn btn-outline">📁 查看歷史</button>
   </div>
@@ -26,62 +24,43 @@
   const overlay = document.getElementById("overlay");
   const captureBtn = document.getElementById("captureBtn");
   const historyBtn = document.getElementById("historyBtn");
+  const patientId = ("{{ patient_id|default('') }}".trim()) || new URLSearchParams(location.search).get("patient") || "";
 
-  // 從後端帶入的 patient_id（若有），否則退回 querystring 的 patient
-  const patientId =
-    "{{ patient_id|default('') }}"?.trim() ||
-    new URLSearchParams(window.location.search).get("patient") ||
-    "";
+  if (!patientId) location.href = "{{ url_for('id_input', next='index') }}";
 
-  // 沒有病患ID就導回輸入頁（後端也建議加防呆）
-  if (!patientId) {
-    window.location.href = "{{ url_for('id_input', next='index') }}";
-  }
-
-  // 啟動相機
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
     .then(stream => { video.srcObject = stream; return new Promise(r => video.onloadedmetadata = () => (video.play(), r())); })
     .catch(err => Swal.fire("❌ 相機啟動失敗", err.message, "error"));
 
   let capturedBlob = null;
-
-  function captureImage() {
+  async function captureImage(){
+    if(!video.videoWidth){ throw new Error("相機未就緒"); }
     const canvas = document.createElement("canvas");
-    canvas.width = video.videoWidth;
-    canvas.height = video.videoHeight;
+    canvas.width = video.videoWidth; canvas.height = video.videoHeight;
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-    return new Promise(resolve => canvas.toBlob(b => (capturedBlob = b, resolve()), "image/jpeg"));
+    return new Promise(res => canvas.toBlob(b => (capturedBlob = b, res()), "image/jpeg"));
   }
 
   captureBtn.addEventListener("click", async () => {
-    await captureImage();
-    Swal.fire({ title:"確定要上傳這張照片嗎？", icon:"question", showCancelButton:true, confirmButtonText:"上傳", cancelButtonText:"取消" })
-      .then(res=>{
-        if(res.isConfirmed && capturedBlob){
-          const fd = new FormData();
-          fd.append("image", capturedBlob, "tongue.jpg");
-          fd.append("patient_id", patientId);
+    try{
+      await captureImage();
+      const fd = new FormData();
+      fd.append("image", capturedBlob, "tongue.jpg");
+      fd.append("patient_id", patientId);
 
-          // ⬅️ 修正這裡：改用正確的 endpoint 名稱 upload_image
-          fetch("{{ url_for('upload_image') }}", { method:"POST", body: fd })
-            .then(r=>r.json())
-            .then(d=>{
-              if(d.success){
-                Swal.fire("✅ 上傳成功","即將跳轉至歷史紀錄","success")
-                  .then(()=>location.href=`{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
-              }else{
-                Swal.fire("❌ 上傳失敗", d.error || "請稍後再試", "error");
-              }
-            })
-            .catch(e=>Swal.fire("❌ 錯誤", e.message, "error"));
-        }
-      });
+      const resp = await fetch("{{ url_for('upload_image') }}", { method:"POST", body: fd });
+      const d = await resp.json();
+      if(d.success){
+        Swal.fire("✅ 上傳成功","即將跳轉至歷史紀錄","success")
+          .then(()=>location.href=`{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
+      }else{
+        Swal.fire("❌ 上傳失敗", d.error || "請稍後再試", "error");
+      }
+    }catch(e){ Swal.fire("❌ 拍照失敗", e.message, "error"); }
   });
 
-  historyBtn.addEventListener("click", ()=>{
-    location.href = `{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`;
-  });
+  historyBtn.addEventListener("click", ()=> location.href = `{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
 </script>
 {% endblock %}
