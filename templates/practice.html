@@ -4,7 +4,7 @@
 {% block content %}
 <div class="card">
   <h1>舌診練習</h1>
-  <p class="muted">請觀察圖片並選出最符合的選項。</p>
+  <p class="muted">請觀察圖片並選出最符合的選項；提交後會顯示解析。</p>
 
   <!-- 題幹 -->
   <h2 style="margin-top:8px">{{ question.question }}</h2>
@@ -14,41 +14,82 @@
     <img src="{{ question.image_url }}" alt="舌照" style="max-height:360px; border-radius:12px">
   </div>
 
-  <!-- 作答表單 -->
-  <form method="POST" action="{{ url_for('submit_practice_answer') }}" class="flex-col">
+  <!-- 作答表單（表格版選項） -->
+  <form method="POST" action="{{ url_for('submit_practice_answer') }}" id="quizForm" class="flex-col" novalidate>
     <input type="hidden" name="qid" value="{{ qid }}">
 
-    <div class="grid grid-2" id="options">
-      {% for choice in question.choices %}
-      <label class="card" style="display:flex; align-items:center; gap:10px; cursor:pointer">
-        <input type="radio" name="answer" value="{{ choice }}" required>
-        <span>{{ choice }}</span>
-      </label>
-      {% endfor %}
+    <div class="table-wrap" aria-label="選項清單">
+      <table class="table table-striped table-compact">
+        <thead>
+          <tr>
+            <th style="width:56px">選</th>
+            <th>選項</th>
+            <th class="cell-muted">提示</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for choice in question.choices %}
+          <tr>
+            <td>
+              <input type="radio" name="answer" value="{{ choice }}" required aria-label="選擇 {{ choice }}">
+            </td>
+            <td><strong>{{ choice }}</strong></td>
+            <td class="cell-muted">請依舌苔顏色/質地特徵判讀</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
     </div>
 
-    <div class="sticky-actions flex" style="justify-content:center; margin-top:8px">
-      <button type="submit" class="btn">提交</button>
+    <!-- 空狀態/錯誤提醒 -->
+    <div id="formAlert" class="alert error" style="display:none; margin-top:12px">
+      請先選擇一個選項再提交。
+    </div>
+
+    <!-- 底部操作 -->
+    <div class="sticky-actions btn-group" style="justify-content:center; margin-top:12px">
+      <button type="submit" class="btn">提交答案</button>
       <a class="btn btn-outline" href="{{ url_for('teaching') }}">返回教學</a>
+      <a class="btn btn-outline" href="{{ url_for('quiz') }}">換一題</a>
     </div>
   </form>
+
+  <!-- （可選）統計摘要：若後端提供可塞數字 -->
+  {# 
+  <div class="card" style="margin-top:16px">
+    <h2>本次練習統計</h2>
+    <div class="table-wrap" style="margin-top:8px">
+      <table class="table table-compact">
+        <thead><tr><th>指標</th><th>數值</th></tr></thead>
+        <tbody>
+          <tr><td>答題數</td><td>{{ stats.total or 1 }}</td></tr>
+          <tr><td>目前連對</td><td>{{ stats.streak or 0 }}</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  #}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // 可用性：載入後自動聚焦到第一個選項
+  // 友善提示：未選擇時阻止提交
+  document.getElementById('quizForm').addEventListener('submit', function(e){
+    const picked = this.querySelector('input[name="answer"]:checked');
+    if(!picked){
+      e.preventDefault();
+      const al = document.getElementById('formAlert');
+      al.style.display = 'block';
+      window.scrollTo({ top: al.getBoundingClientRect().top + window.scrollY - 120, behavior: 'smooth' });
+      setTimeout(()=> al.style.display='none', 1800);
+    }
+  });
+
+  // 載入後把焦點放在第一個選項
   window.addEventListener('DOMContentLoaded', () => {
     const first = document.querySelector('input[name="answer"]');
     first && first.focus();
-  });
-
-  // 方便鍵盤操作：Enter 直接提交
-  document.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && document.activeElement?.name === 'answer') {
-      e.preventDefault();
-      document.querySelector('button[type="submit"]')?.click();
-    }
   });
 </script>
 {% endblock %}
