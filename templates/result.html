@@ -1,8 +1,8 @@
 {% extends "base.html" %}
-{% block title %}答案解析{% endblock %}
+{% block title %}答案說明{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>答案解析</h1>
+  <h1>答案說明</h1>
 
   <div class="grid grid-2" style="margin-top:8px">
     <div class="card">
@@ -22,35 +22,25 @@
     </h3>
   </div>
 
+  <!-- 這一段：把原本「解析」改成「說明」，依題目所在資料夾列出症狀 -->
   <div class="card" style="margin-top:12px">
-    <h2>解析</h2>
-    <p style="margin-top:6px">{{ explanation }}</p>
-  </div>
+    <h2>說明</h2>
+    {% if category %}
+      <p class="muted" style="margin-top:6px">類別：<strong>{{ category }}</strong></p>
+    {% endif %}
 
-  {% if details %}
-  <div class="card" style="margin-top:12px">
-    <h2>作答明細</h2>
-    <div class="table-wrap" style="margin-top:6px">
-      <table class="table table-striped table-compact">
-        <thead><tr><th class="col-xs">狀態</th><th>你的選擇</th><th>正確答案</th><th>可信度</th><th>補充說明</th></tr></thead>
-        <tbody>
-          {% for row in details %}
-          <tr>
-            <td>{% if row.is_correct %}<span class="pill ok">✅ 正確</span>{% else %}<span class="pill bad">❌ 錯誤</span>{% endif %}</td>
-            <td><strong>{{ row.user_answer }}</strong></td>
-            <td>{{ row.correct_answer }}</td>
-            <td>
-              <div class="bar" style="--w: {{ (row.confidence or 0) * 100 }}%"><i></i></div>
-              <div class="muted" style="font-size:.9rem">{{ ((row.confidence or 0) * 100)|round(0) }}%</div>
-            </td>
-            <td class="cell-muted">{{ row.note or '-' }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+    {% if description_items and description_items|length > 0 %}
+      <ul style="margin:8px 0 0 1rem">
+        {% for item in description_items %}
+          <li style="margin:6px 0">{{ item }}</li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p class="cell-muted" style="margin-top:6px">
+        尚無對應說明。請在 <code>SYMPTOMS_BY_CATEGORY</code> 增加「{{ category or '類別' }}」的條目。
+      </p>
+    {% endif %}
   </div>
-  {% endif %}
 
   <div class="sticky-actions btn-group" style="margin-top:12px">
     <a class="btn" href="{{ url_for('quiz') }}">再練一題</a>
