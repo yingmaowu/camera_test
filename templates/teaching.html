@@ -7,14 +7,14 @@
   <p class="muted">選擇你要學習或練習的功能：</p>
 
   <div class="flex-col" style="margin-top:20px; gap:16px; align-items:center">
-    <a class="btn btn-block" href="/tongue_teaching_static">舌象分類教學</a>
-    <a class="btn btn-block" href="/quiz">舌象判別練習</a>
-    <a class="btn btn-block" href="/practice">中醫五區辨識練習</a>
-    <a class="btn btn-block" href="/tongue_quiz">舌頭知識問答</a>
+    <a class="btn btn-block" href="{{ url_for('tongue_teaching_static') }}">舌象分類教學</a>
+    <a class="btn btn-block" href="{{ url_for('quiz') }}">舌象判別練習</a>
+    <a class="btn btn-block" href="{{ url_for('practice.index') }}">中醫五區辨識練習</a>
+    <a class="btn btn-block" href="{{ url_for('tongue_quiz') }}">舌頭知識問答</a>
   </div>
 
   <div class="sticky-actions flex" style="justify-content:center; margin-top:24px">
-    <a class="btn btn-outline" href="{{ url_for('home') if 'home' in globals() else '/' }}">返回首頁</a>
+    <a class="btn btn-outline" href="{{ url_for('home') }}">返回首頁</a>
   </div>
 </div>
 {% endblock %}
