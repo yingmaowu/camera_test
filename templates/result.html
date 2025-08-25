@@ -4,30 +4,55 @@
 <div class="card">
   <h1>答案解析</h1>
 
-  <div class="grid grid-2" style="margin-top:12px">
+  <div class="grid grid-2" style="margin-top:8px">
     <div class="card">
       <h2>你的答案</h2>
-      <p style="font-size:1.1rem"><span class="badge">{{ user_answer }}</span></p>
+      <p style="font-size:1.05rem"><span class="badge">{{ user_answer }}</span></p>
     </div>
     <div class="card">
       <h2>正確答案</h2>
-      <p style="font-size:1.1rem"><span class="badge">{{ correct_answer }}</span></p>
+      <p style="font-size:1.05rem"><span class="badge">{{ correct_answer }}</span></p>
     </div>
   </div>
 
-  <div class="card" style="margin-top:16px">
+  <div class="card" style="margin-top:12px">
     <h2>判定</h2>
-    <h3 style="margin-top:8px; color: {{ 'green' if is_correct else 'red' }}">
+    <h3 style="margin-top:6px; color: {{ 'green' if is_correct else 'red' }}">
       {% if is_correct %}✅ 答對了！{% else %}❌ 答錯了{% endif %}
     </h3>
   </div>
 
-  <div class="card" style="margin-top:16px">
+  <div class="card" style="margin-top:12px">
     <h2>解析</h2>
-    <p style="margin-top:8px; line-height:1.8">{{ explanation }}</p>
+    <p style="margin-top:6px">{{ explanation }}</p>
   </div>
 
-  <div class="sticky-actions flex" style="justify-content:center; margin-top:16px">
+  {% if details %}
+  <div class="card" style="margin-top:12px">
+    <h2>作答明細</h2>
+    <div class="table-wrap" style="margin-top:6px">
+      <table class="table table-striped table-compact">
+        <thead><tr><th class="col-xs">狀態</th><th>你的選擇</th><th>正確答案</th><th>可信度</th><th>補充說明</th></tr></thead>
+        <tbody>
+          {% for row in details %}
+          <tr>
+            <td>{% if row.is_correct %}<span class="pill ok">✅ 正確</span>{% else %}<span class="pill bad">❌ 錯誤</span>{% endif %}</td>
+            <td><strong>{{ row.user_answer }}</strong></td>
+            <td>{{ row.correct_answer }}</td>
+            <td>
+              <div class="bar" style="--w: {{ (row.confidence or 0) * 100 }}%"><i></i></div>
+              <div class="muted" style="font-size:.9rem">{{ ((row.confidence or 0) * 100)|round(0) }}%</div>
+            </td>
+            <td class="cell-muted">{{ row.note or '-' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% endif %}
+
+  <div class="sticky-actions btn-group" style="margin-top:12px">
     <a class="btn" href="{{ url_for('quiz') }}">再練一題</a>
     <a class="btn btn-outline" href="{{ url_for('teaching') }}">返回教學</a>
   </div>
