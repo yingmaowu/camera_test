@@ -53,28 +53,12 @@
       <a class="btn btn-outline" href="{{ url_for('quiz') }}">換一題</a>
     </div>
   </form>
-
-  <!-- （可選）統計摘要：若後端提供可塞數字 -->
-  {# 
-  <div class="card" style="margin-top:16px">
-    <h2>本次練習統計</h2>
-    <div class="table-wrap" style="margin-top:8px">
-      <table class="table table-compact">
-        <thead><tr><th>指標</th><th>數值</th></tr></thead>
-        <tbody>
-          <tr><td>答題數</td><td>{{ stats.total or 1 }}</td></tr>
-          <tr><td>目前連對</td><td>{{ stats.streak or 0 }}</td></tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-  #}
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-  // 友善提示：未選擇時阻止提交
+  // 未選擇時阻止提交 + 顯示提示
   document.getElementById('quizForm').addEventListener('submit', function(e){
     const picked = this.querySelector('input[name="answer"]:checked');
     if(!picked){
@@ -86,7 +70,7 @@
     }
   });
 
-  // 載入後把焦點放在第一個選項
+  // 載入後把焦點放到第一個選項
   window.addEventListener('DOMContentLoaded', () => {
     const first = document.querySelector('input[name="answer"]');
     first && first.focus();
