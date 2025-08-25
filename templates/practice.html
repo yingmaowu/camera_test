@@ -15,7 +15,7 @@
   </div>
 
   <!-- 作答表單 -->
-  <form method="POST" action="/submit_practice_answer" class="flex-col">
+  <form method="POST" action="{{ url_for('submit_practice_answer') }}" class="flex-col">
     <input type="hidden" name="qid" value="{{ qid }}">
 
     <div class="grid grid-2" id="options">
@@ -29,7 +29,7 @@
 
     <div class="sticky-actions flex" style="justify-content:center; margin-top:8px">
       <button type="submit" class="btn">提交</button>
-      <a class="btn btn-outline" href="{{ url_for('teaching') if 'teaching' in globals() else '/' }}">返回教學</a>
+      <a class="btn btn-outline" href="{{ url_for('teaching') }}">返回教學</a>
     </div>
   </form>
 </div>
