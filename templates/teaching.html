@@ -1,22 +1,24 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <title>教學資源</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; background: #f0f0f0; font-family: "Segoe UI", sans-serif; margin: 0; padding: 2rem; }
-    h2 { margin-bottom: 2rem; }
-    button { padding: 1rem 2rem; font-size: 1.1rem; margin: 0.5rem; background-color: #4a90e2; color: white; border: none; border-radius: 8px; cursor: pointer; width: 280px; }
-    button:hover { background-color: #357ABD; }
-  </style>
-</head>
-<body>
-  <h2>教學資源</h2>
-  <button onclick="location.href='/tongue_teaching_static'">舌象分類教學</button>
-  <button onclick="location.href='/quiz'">舌象判別練習</button>
-  <button class="btn" onclick="location.href='/practice'">中醫五區辨識練習</button>
-  <button onclick="location.href='/tongue_quiz'">舌頭知識問答</button>
-  <button onclick="history.back()">上一頁</button>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}教學資源{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>教學資源</h1>
+  <p class="muted">選擇想要學習或練習的模組。</p>
+
+  <div class="grid grid-2" style="margin-top:12px">
+    <a class="card" href="{{ url_for('practice') }}" style="text-decoration:none; color:inherit">
+      <h2>舌象分類練習</h2>
+      <p>從 Cloudinary / 題庫隨機抽題，熟悉黃苔、白苔、灰黑苔、紅紫舌等分類。</p>
+      <span class="badge">練習模式</span>
+    </a>
+
+    <a class="card" href="{{ url_for('teaching_five_regions') if 'teaching_five_regions' in globals() else url_for('teaching') }}" style="text-decoration:none; color:inherit">
+      <h2>五區診斷教學</h2>
+      <p>了解舌尖、舌邊、舌中、舌根等區域的判讀與中醫對應。</p>
+      <span class="badge">學習模式</span>
+    </a>
+  </div>
+
+  {# 若你有其它教學頁 / 互動教材連結，一併加入 #}
+</div>
+{% endblock %}
