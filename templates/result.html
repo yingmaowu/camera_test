@@ -1,13 +1,30 @@
-<!DOCTYPE html>
-<html>
-<head><title>答案解析</title></head>
-<body>
-  <h2>你的答案是：{{ user_answer }}</h2>
-  <h2>正確答案是：{{ correct_answer }}</h2>
-  <h3 style="color: {{ 'green' if is_correct else 'red' }}">
-    {% if is_correct %}✅ 答對了！{% else %}❌ 答錯了{% endif %}
-  </h3>
-  <p><strong>解析：</strong>{{ explanation }}</p>
-  <a href="/quiz">再練一題</a>
-</body>
-</html>
+{% extends "base.html" %}
+{% block title %}作答結果{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>作答結果</h1>
+  <p class="muted">以下是本次練習的統計。</p>
+
+  <div class="grid grid-2" style="margin-top:12px">
+    <div class="card">
+      <h2>整體成績</h2>
+      <p>答對：<strong id="score-correct">{{ score_correct if 'score_correct' in globals() else '' }}</strong></p>
+      <p>答錯：<strong id="score-wrong">{{ score_wrong if 'score_wrong' in globals() else '' }}</strong></p>
+      <p>正確率：<strong id="score-acc">{{ score_acc if 'score_acc' in globals() else '' }}</strong></p>
+    </div>
+    <div class="card">
+      <h2>建議</h2>
+      <p class="muted">針對錯誤較多的分類（例如「灰黑苔」），回到練習多看幾題。</p>
+      <div class="flex">
+        <a class="btn" href="{{ url_for('practice') }}">再練一次</a>
+        <a class="btn btn-outline" href="{{ url_for('teaching') }}">返回教學</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- 若你會列出每題詳解，保留這個容器 -->
+  <div id="detail-list" class="grid" style="margin-top:16px">
+    {# 你的後端或 JS 會把詳解項目塞進來 #}
+  </div>
+</div>
+{% endblock %}
