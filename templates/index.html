@@ -26,7 +26,12 @@
   const overlay = document.getElementById("overlay");
   const captureBtn = document.getElementById("captureBtn");
   const historyBtn = document.getElementById("historyBtn");
-  const patientId = new URLSearchParams(window.location.search).get("patient") || "";
+
+  // 從後端帶入的 patient_id（若有），否則退回 querystring 的 patient
+  const patientId =
+    "{{ patient_id|default('') }}"?.trim() ||
+    new URLSearchParams(window.location.search).get("patient") ||
+    "";
 
   // 沒有病患ID就導回輸入頁（後端也建議加防呆）
   if (!patientId) {
@@ -58,19 +63,25 @@
           const fd = new FormData();
           fd.append("image", capturedBlob, "tongue.jpg");
           fd.append("patient_id", patientId);
-          fetch("{{ url_for('upload') }}", { method:"POST", body: fd })
+
+          // ⬅️ 修正這裡：改用正確的 endpoint 名稱 upload_image
+          fetch("{{ url_for('upload_image') }}", { method:"POST", body: fd })
             .then(r=>r.json())
             .then(d=>{
               if(d.success){
-                Swal.fire("✅ 上傳成功","即將跳轉至歷史紀錄","success").then(()=>location.href=`{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
+                Swal.fire("✅ 上傳成功","即將跳轉至歷史紀錄","success")
+                  .then(()=>location.href=`{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
               }else{
                 Swal.fire("❌ 上傳失敗", d.error || "請稍後再試", "error");
               }
-            }).catch(e=>Swal.fire("❌ 錯誤", e.message, "error"));
+            })
+            .catch(e=>Swal.fire("❌ 錯誤", e.message, "error"));
         }
       });
   });
 
-  historyBtn.addEventListener("click", ()=> location.href = `{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
+  historyBtn.addEventListener("click", ()=>{
+    location.href = `{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`;
+  });
 </script>
 {% endblock %}
