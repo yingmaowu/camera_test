@@ -1,41 +1,45 @@
-:root{
-  --bg:#f6f8fb; --card:#ffffff; --text:#1f2937; --muted:#6b7280;
-  --brand:#16a34a; --brand-2:#0ea5e9; --danger:#ef4444; --ring:rgba(14,165,233,.35);
-  --radius:16px;
-  --shadow:0 8px 30px rgba(0,0,0,.06);
-  --font: "Noto Sans TC", "Segoe UI", system-ui, -apple-system, sans-serif;
-}
-*{box-sizing:border-box}
-html,body{height:100%}
-body{margin:0; font-family:var(--font); color:var(--text); background:var(--bg)}
-.container{max-width:980px; margin:24px auto; padding:0 16px}
-.card{background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:20px}
-h1,h2{margin:8px 0 16px}
-h1{font-size:1.6rem} h2{font-size:1.25rem; color:var(--muted)}
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}舌苔系統{% endblock %}</title>
 
-.nav{position:sticky; top:0; z-index:50; background:rgba(255,255,255,.8); backdrop-filter:saturate(180%) blur(12px); border-bottom:1px solid #e5e7eb}
-.nav,.footer{display:flex; align-items:center; justify-content:space-between; padding:10px 16px}
-.nav__brand{font-weight:700; text-decoration:none; color:var(--text)}
-.nav a{margin-left:8px; text-decoration:none; color:var(--text)}
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+  <!-- Top Nav -->
+  <header class="nav">
+    <div class="nav__left">
+      <button class="btn btn-ghost" onclick="history.back()" aria-label="上一頁">← 上一頁</button>
+    </div>
+    <div class="nav__center">
+      <a class="nav__brand" href="{{ url_for('home') if 'home' in globals() else '/' }}">舌苔辨識與教學</a>
+    </div>
+    <div class="nav__right">
+      <a class="btn" href="{{ url_for('index') if 'index' in globals() else '#' }}">相機</a>
+      <a class="btn" href="{{ url_for('history') if 'history' in globals() else '#' }}">歷史</a>
+      <a class="btn" href="{{ url_for('teaching') if 'teaching' in globals() else '#' }}">教學</a>
+      <a class="btn btn-outline" href="{{ url_for('practice') if 'practice' in globals() else '#' }}">練習</a>
+    </div>
+  </header>
 
-.btn{display:inline-flex; align-items:center; gap:6px; padding:8px 12px; border-radius:12px;
-  background:var(--brand-2); color:white; border:1px solid transparent; cursor:pointer; box-shadow:var(--shadow)}
-.btn:hover{filter:brightness(1.05)}
-.btn:focus{outline:2px solid var(--ring); outline-offset:2px}
-.btn-outline{background:transparent; color:var(--brand-2); border-color:var(--brand-2)}
-.btn-ghost{background:transparent; color:var(--text); border-color:transparent}
-.btn-danger{background:var(--danger)}
+  <!-- Main -->
+  <main class="container">
+    {% block content %}{% endblock %}
+  </main>
 
-.grid{display:grid; gap:16px}
-.grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
-@media(max-width:800px){.grid-2{grid-template-columns:1fr}}
+  <!-- Footer -->
+  <footer class="footer">
+    <div>© {{ 2025 }} 幸福吳家 · 舌苔系統</div>
+    <div class="footer__links">
+      <a href="{{ url_for('home') if 'home' in globals() else '/' }}">首頁</a>
+      <a href="{{ url_for('teaching') if 'teaching' in globals() else '#' }}">教學資源</a>
+    </div>
+  </footer>
 
-.input, select{
-  width:100%; padding:10px 12px; border-radius:12px; border:1px solid #e5e7eb; background:#fff;
-}
-.input:focus{outline:2px solid var(--ring); border-color:transparent}
-
-.footer{color:var(--muted); border-top:1px solid #e5e7eb}
-.footer__links a{color:var(--muted); margin-left:12px}
-.badge{display:inline-block; padding:.2rem .5rem; border-radius:999px; background:#eef6ff; color:#0369a1}
-.kbd{font:12px/1.2 ui-monospace,SFMono-Regular; background:#f3f4f6; border:1px solid #e5e7eb; padding:2px 6px; border-radius:6px}
+  <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
