@@ -1,62 +1,100 @@
+{% extends "base.html" %}
+{% block title %}中醫五區辨識練習{% endblock %}
 
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <title>中醫五區辨識練習</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  <style>
-    body { margin:0; font-family:sans-serif; background:#f0f0f0; text-align:center; }
-    h2 { margin:1rem 0 .5rem; }
-    #videoWrapper { position:relative; width:100%; max-width:500px; margin:auto; overflow:hidden; aspect-ratio:3/4; background:#000; }
-    #camera, #overlay { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; }
-    #overlay { pointer-events:none; z-index:10; opacity:.6; }
-    button { margin:1rem .5rem; padding:.6rem 1.2rem; font-size:1.05rem; border:0; border-radius:8px; background:#4a90e2; color:#fff; }
-    button:hover { background:#357ABD; }
-    .card { display:none; text-align:left; max-width:500px; margin:1rem auto; background:#fff; padding:1rem; border-radius:10px; }
-    select, textarea { width:100%; margin-top:.25rem; }
-    textarea { height:80px; }
-  </style>
-</head>
-<body>
-  <h2>中醫五區辨識練習</h2>
+{% block content %}
+<div class="card">
+  <h1>中醫五區辨識練習</h1>
+  <p class="muted">步驟：開啟相機拍照 → 系統與你的觀察一起比對 → 顯示五區結果。</p>
 
-  <div id="videoWrapper">
-    <video id="camera" autoplay playsinline muted></video>
-    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="">
+  <!-- 相機容器 -->
+  <div id="videoWrapper" class="card" style="position:relative; width:100%; max-width:500px; margin:auto; overflow:hidden; aspect-ratio:3/4; background:#000">
+    <video id="camera" autoplay playsinline muted style="position:absolute; inset:0; width:100%; height:100%; object-fit:cover; border-radius:12px"></video>
+    <img id="overlay" src="{{ url_for('static', filename='overlay.png') }}" alt="overlay"
+         style="position:absolute; inset:0; width:100%; height:100%; object-fit:contain; pointer-events:none; z-index:10; opacity:.6;">
   </div>
 
-  <div>
-    <button id="captureBtn">拍照 + 送出判斷（練習）</button>
-    <button onclick="location.href='/'">回到主頁</button>
+  <!-- 操作 -->
+  <div class="sticky-actions btn-group" style="justify-content:center; margin-top:16px">
+    <button id="captureBtn" class="btn">📸 拍照 + 送出判斷（練習）</button>
+    <a class="btn btn-outline" href="{{ url_for('home') }}">返回首頁</a>
   </div>
 
-  <form id="diagForm" class="card">
-    <h3>請觀察後選擇判斷：</h3>
-    <label>心：</label><select name="心"><option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option></select><br>
-    <label>肝：</label><select name="肝"><option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option></select><br>
-    <label>脾：</label><select name="脾"><option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option></select><br>
-    <label>肺：</label><select name="肺"><option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option></select><br>
-    <label>腎：</label><select name="腎"><option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option></select><br>
-    <label>你的總結：</label><textarea name="summary"></textarea><br>
-    <button type="submit">送出診斷</button>
+  <!-- 你的觀察（拍照後顯示） -->
+  <form id="diagForm" class="card" style="display:none; margin-top:16px">
+    <h2>你的觀察</h2>
+    <p class="muted">請依觀察選擇各區顏色傾向，並可填寫摘要。</p>
+
+    <div class="grid grid-2">
+      <label>心（舌尖）
+        <select class="input" name="心">
+          <option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option>
+        </select>
+      </label>
+      <label>肝（左舌邊）
+        <select class="input" name="肝">
+          <option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option>
+        </select>
+      </label>
+      <label>脾（中間偏前）
+        <select class="input" name="脾">
+          <option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option>
+        </select>
+      </label>
+      <label>肺（右舌邊）
+        <select class="input" name="肺">
+          <option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option>
+        </select>
+      </label>
+      <label>腎（舌根）
+        <select class="input" name="腎">
+          <option>白苔</option><option>偏紅</option><option>偏黃</option><option>偏紫</option><option>偏黑灰</option>
+        </select>
+      </label>
+    </div>
+
+    <label style="display:block; margin-top:12px">你的總結
+      <textarea class="input" name="summary" placeholder="可補充觀察重點（例：舌質淡紅、苔薄白，邊見齒痕…）" rows="3"></textarea>
+    </label>
+
+    <div class="btn-group" style="margin-top:12px">
+      <button type="submit" class="btn">送出診斷</button>
+      <button type="button" id="retakeBtn" class="btn btn-outline">重新拍照</button>
+    </div>
   </form>
+</div>
+{% endblock %}
 
+{% block scripts %}
 <script>
   const video = document.getElementById("camera");
-  const captureBtn = document.getElementById("captureBtn");
   const overlay = document.getElementById("overlay");
+  const captureBtn = document.getElementById("captureBtn");
   const form = document.getElementById("diagForm");
+  const retakeBtn = document.getElementById("retakeBtn");
+
   let capturedBlob = null, stream = null;
 
-  // 相機預覽
-  navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }}})
-    .then(s => { stream = s; video.srcObject = s; video.onloadedmetadata = () => video.play(); })
-    .catch(err => Swal.fire("❌ 相機啟動失敗", err.message, "error"));
+  // 啟動相機
+  function startCamera(){
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }}})
+      .then(s => { stream = s; video.srcObject = s; video.onloadedmetadata = () => video.play(); })
+      .catch(err => Swal.fire("❌ 相機啟動失敗", err.message, "error"));
+  }
+  startCamera();
 
-  // 拍照
+  // 重新拍照
+  retakeBtn?.addEventListener("click", ()=>{
+    capturedBlob = null;
+    form.style.display = "none";
+    startCamera();
+    window.scrollTo({ top: document.querySelector('.card').offsetTop, behavior: 'smooth' });
+  });
+
+  // 拍照 + 顯示表單
   captureBtn.addEventListener("click", () => {
+    if(!video.videoWidth){
+      return Swal.fire("⚠️ 相機尚未就緒，請稍候再試");
+    }
     const snap = document.createElement("canvas");
     snap.width = video.videoWidth;
     snap.height = video.videoHeight;
@@ -64,53 +102,105 @@
     ctx.drawImage(video, 0, 0, snap.width, snap.height);
     ctx.drawImage(overlay, 0, 0, snap.width, snap.height);
     if (stream) stream.getTracks().forEach(t => t.stop());
-    snap.toBlob(b => { capturedBlob = b; form.style.display = "block"; window.scrollTo({top: form.offsetTop, behavior:'smooth'}); }, "image/jpeg");
+    snap.toBlob(b => {
+      capturedBlob = b;
+      form.style.display = "block";
+      window.scrollTo({top: form.offsetTop - 60, behavior:'smooth'});
+    }, "image/jpeg");
   });
 
-  // 送出
+  // 送出到 /practice/upload → 回應後用漂亮表格呈現
   form.addEventListener("submit", e => {
     e.preventDefault();
+    if(!capturedBlob){
+      return Swal.fire("⚠️ 尚未拍照，請先拍照再送出。");
+    }
     const fd = new FormData(form);
     const answers = { "心": fd.get("心"), "肝": fd.get("肝"), "脾": fd.get("脾"), "肺": fd.get("肺"), "腎": fd.get("腎") };
 
     const sendData = new FormData();
-    sendData.append("image", capturedBlob);
+    sendData.append("image", capturedBlob, "practice.jpg");
     sendData.append("user_answers", JSON.stringify(answers));
-    sendData.append("user_summary", fd.get("summary"));
+    sendData.append("user_summary", fd.get("summary") || "");
 
     fetch("/practice/upload", { method: "POST", body: sendData })
-      .then(r => {
-        if (!r.ok) throw new Error(`伺服器錯誤：${r.status}`);
-        return r.json();
-      })
+      .then(r => { if (!r.ok) throw new Error(`伺服器錯誤：${r.status}`); return r.json(); })
       .then(data => {
-        // 使用者觀察
-        let userTable = "<table style='border-collapse:collapse;width:100%'><tr><th>區域</th><th>使用者觀察</th></tr>";
-        Object.keys(data["使用者觀察"]||{}).forEach(k => userTable += `<tr><td>${k}</td><td>${data["使用者觀察"][k]}</td></tr>`);
-        userTable += "</table>";
+        // ——— 組 SweetAlert 內容：用 table-wrap + table 樣式，風格與全站一致 ———
+        const userObs = data["使用者觀察"] || {};
+        const sys = data["五區分析"] || {};
+        const mainColor = data["舌苔主色"] || "";
+        const lab = data["色彩值"] || null;
+        const userSummary = (data["使用者總結"] || "").toString().replace(/\n/g, "<br>");
 
-        // 系統五區分析
-        let sysTable = "<table style='border-collapse:collapse;width:100%;margin-top:1rem'><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
-        Object.keys(data["五區分析"]||{}).forEach(k => {
-          const r = data["五區分析"][k] || {};
-          sysTable += `<tr><td>${r.區域||""}</td><td>${r.診斷||""}</td><td>${r.理論||""}</td><td>${r.建議||""}</td></tr>`;
+        // 使用者觀察表
+        let userTable = `
+          <div class="table-wrap">
+            <table class="table table-striped table-compact">
+              <thead><tr><th style="width:120px">區域</th><th>你的觀察</th></tr></thead>
+              <tbody>
+        `;
+        Object.keys(userObs).forEach(k => {
+          userTable += `<tr><td><strong>${k}</strong></td><td>${userObs[k] ?? '-'}</td></tr>`;
         });
-        sysTable += "</table>";
+        if(Object.keys(userObs).length === 0){
+          userTable += `<tr><td colspan="2" class="cell-muted">（無填寫）</td></tr>`;
+        }
+        userTable += `</tbody></table></div>`;
 
-        const colorDetail = data["色彩值"] ? `<br><b>LAB：</b>L=${data["色彩值"][0]}, A=${data["色彩值"][1]}, B=${data["色彩值"][2]}` : "";
+        // 系統五區分析表
+        let sysTable = `
+          <div class="table-wrap" style="margin-top:12px">
+            <table class="table table-striped table-compact">
+              <thead><tr><th style="width:120px">區域</th><th>診斷</th><th>理論</th><th>建議</th></tr></thead>
+              <tbody>
+        `;
+        const keys = Object.keys(sys);
+        if(keys.length){
+          keys.forEach(k => {
+            const r = sys[k] || {};
+            sysTable += `
+              <tr>
+                <td><strong>${r.區域 ?? k}</strong></td>
+                <td>${r.診斷 ?? '-'}</td>
+                <td class="cell-muted">${r.理論 ?? '-'}</td>
+                <td class="cell-muted">${r.建議 ?? '-'}</td>
+              </tr>`;
+          });
+        }else{
+          sysTable += `<tr><td colspan="4" class="cell-muted">（無系統分析資料）</td></tr>`;
+        }
+        sysTable += `</tbody></table></div>`;
+
+        // 主色貼紙 + LAB
+        const colorDetail = lab ? `<div class="small cell-muted">LAB：L=${lab[0]}, A=${lab[1]}, B=${lab[2]}</div>` : "";
+        const mainColorBadge = mainColor
+          ? `<div class="pill neutral" style="margin-top:6px"><span class="swatch" style="background:${mainColor};"></span> 主色：<b style="margin-left:4px">${mainColor}</b></div>`
+          : "";
 
         Swal.fire({
           title:"🧠 練習判讀結果",
-          html:`<b>舌苔主色：</b>${data["舌苔主色"]||""}${colorDetail}<br><br>
-                <b>你的總結：</b><br>${data["使用者總結"]||""}<br><br>
-                <b>使用者觀察：</b><br>${userTable}<br><br>
-                <b>系統五區分析：</b><br>${sysTable}`,
-          icon:"info",
+          html: `
+            ${mainColorBadge}
+            ${colorDetail}
+            <div class="card" style="margin-top:12px">
+              <h2>你的總結</h2>
+              <div class="cell-muted" style="margin-top:6px">${userSummary || '（無）'}</div>
+            </div>
+            <div class="card" style="margin-top:12px">
+              <h2>使用者觀察</h2>
+              ${userTable}
+            </div>
+            <div class="card" style="margin-top:12px">
+              <h2>系統五區分析</h2>
+              ${sysTable}
+            </div>
+          `,
+          width: "64rem",
           confirmButtonText:"完成"
         });
       })
       .catch(err => Swal.fire("❌ 上傳失敗", err.message, "error"));
   });
 </script>
-</body>
-</html>
+{% endblock %}
