@@ -1,19 +1,14 @@
-<!DOCTYPE html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="UTF-8" />
-  <title>舌苔辨識系統首頁</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <style>
-    body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background: #f0f0f0; font-family: "Segoe UI", sans-serif; margin: 0; }
-    h1 { margin-bottom: 2rem; }
-    button { padding: 1rem 2rem; font-size: 1.2rem; margin: 0.5rem; background-color: #4a90e2; color: white; border: none; border-radius: 8px; cursor: pointer; width: 250px; }
-    button:hover { background-color: #357ABD; }
-  </style>
-</head>
-<body>
+{% extends "base.html" %}
+{% block title %}首頁{% endblock %}
+{% block content %}
+<div class="card">
   <h1>舌苔辨識系統</h1>
-  <button onclick="location.href='/id'">舌苔辨識</button>
-  <button onclick="location.href='/teaching'">教學資源</button>
-</body>
-</html>
+  <p class="muted">請選擇要進行的功能：</p>
+
+  <div class="flex-col" style="align-items:center; margin-top:16px; gap:16px">
+    <!-- 進入相機前先輸入病患ID：導向 /id?next=index -->
+    <a class="btn btn-block" href="{{ url_for('id_input', next='index') }}">舌苔辨識</a>
+    <a class="btn btn-block" href="{{ url_for('teaching') }}">教學資源</a>
+  </div>
+</div>
+{% endblock %}
