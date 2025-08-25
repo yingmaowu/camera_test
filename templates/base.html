@@ -2,51 +2,33 @@
 <html lang="zh-Hant">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}中醫舌苔系統{% endblock %}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>{% block title %}舌苔系統{% endblock %}</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    /* 下拉選單簡易樣式（也可搬到 theme.css） */
-    .dropdown { position: relative; }
-    .dropdown-toggle { display:inline-flex; align-items:center; gap:6px; }
-    .dropdown-menu {
-      position: absolute; right: 0; top: calc(100% + 6px);
-      min-width: 220px; background: #fff; border: 1px solid #e5e7eb;
-      border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: none;
-      z-index: 100;
+    .dropdown{position:relative}
+    .dropdown-toggle{display:inline-flex; align-items:center; gap:6px}
+    .dropdown-menu{
+      position:absolute; right:0; top:calc(100% + 6px); min-width:220px; background:#fff; border:1px solid #e5e7eb;
+      border-radius:12px; box-shadow:var(--shadow); padding:6px; display:none; z-index:100;
     }
-    .dropdown.open .dropdown-menu { display: block; }
-    .dropdown-item {
-      display:block; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--text);
-    }
-    .dropdown-item:hover { background:#f5f7fb; }
+    .dropdown.open .dropdown-menu{display:block}
+    .dropdown-item{display:block; padding:12px; border-radius:10px; text-decoration:none; color:var(--text)}
+    .dropdown-item:hover{background:#f5f7fb}
   </style>
 </head>
 <body>
-  <!-- Top Nav -->
   <header class="nav">
-    <div class="nav__left">
-      <button class="btn btn-ghost" onclick="history.back()" aria-label="上一頁">← 上一頁</button>
-    </div>
+    <button class="btn btn-ghost" onclick="history.back()" aria-label="上一頁" style="width:auto">←</button>
+    <a class="nav__brand" href="{{ url_for('home') }}">舌苔辨識與教學</a>
 
-    <div class="nav__center">
-      <a class="nav__brand" href="{{ url_for('home') }}">中醫舌苔系統</a>
-    </div>
-
-    <div class="nav__right" style="display:flex; align-items:center; gap:8px">
-      <!-- 舌苔辨識：先輸入病患 ID -->
+    <div class="nav__right" id="navRight">
       <a class="btn" href="{{ url_for('id_input', next='index') }}">舌苔辨識</a>
-
-      <!-- 歷史紀錄：先輸入病患 ID -->
       <a class="btn" href="{{ url_for('id_input', next='history') }}">歷史紀錄</a>
-
-      <!-- 教學資源：下拉選單 -->
       <div class="dropdown" id="teachingDropdown">
-        <button class="btn btn-outline dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
-          教學資源 ▾
-        </button>
+        <button class="btn btn-outline dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">教學資源 ▾</button>
         <div class="dropdown-menu" role="menu" aria-label="教學選單">
           <a class="dropdown-item" href="{{ url_for('tongue_teaching_static') }}">舌象分類教學</a>
           <a class="dropdown-item" href="{{ url_for('quiz') }}">舌象判別練習</a>
@@ -57,14 +39,12 @@
     </div>
   </header>
 
-  <!-- Main -->
   <main class="container">
     {% block content %}{% endblock %}
   </main>
 
-  <!-- Footer -->
   <footer class="footer">
-    <div> 中醫舌苔系統</div>
+    <div>© {{ 2025 }} 幸福吳家</div>
     <div class="footer__links">
       <a href="{{ url_for('home') }}">首頁</a>
       <a href="{{ url_for('teaching') }}">教學資源</a>
@@ -73,7 +53,7 @@
 
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
   <script>
-    // 教學資源下拉 JS
+    // 教學下拉
     (function(){
       const dd = document.getElementById('teachingDropdown');
       const toggle = dd.querySelector('.dropdown-toggle');
@@ -83,17 +63,9 @@
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
       document.addEventListener('click', (e)=>{
-        if (!dd.contains(e.target)) {
-          dd.classList.remove('open');
-          toggle.setAttribute('aria-expanded','false');
-        }
+        if (!dd.contains(e.target)) { dd.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); }
       });
-      document.addEventListener('keydown', (e)=>{
-        if (e.key === 'Escape') {
-          dd.classList.remove('open');
-          toggle.setAttribute('aria-expanded','false');
-        }
-      });
+      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape'){ dd.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); } });
     })();
   </script>
   {% block scripts %}{% endblock %}
