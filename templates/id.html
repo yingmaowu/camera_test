@@ -18,7 +18,6 @@
 
 {% block scripts %}
 <script>
-  // 從查詢參數取得 next（預設 index）
   const urlParams = new URLSearchParams(window.location.search);
   const nextPage = urlParams.get("next") || "index";
 
@@ -29,8 +28,8 @@
       return Swal.fire("⚠️ 請輸入病患 ID");
     }
     const dest = (nextPage === "history")
-      ? `/history?patient=${encodeURIComponent(id)}`
-      : `/index?patient=${encodeURIComponent(id)}`;
+      ? `{{ url_for('history') }}?patient=${encodeURIComponent(id)}`
+      : `{{ url_for('index') }}?patient=${encodeURIComponent(id)}`;
     window.location.href = dest;
   });
 </script>
