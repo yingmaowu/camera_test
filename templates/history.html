@@ -2,31 +2,69 @@
 {% block title %}歷史紀錄{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>歷史紀錄</h1>
-  <p class="muted">瀏覽過往拍攝影像與分析結果。</p>
+  <h1>📁 歷史照片紀錄</h1>
+  <p class="muted">瀏覽過往拍攝影像與五區診斷。</p>
 
-  <!-- 空狀態骨架 -->
-  <div id="history-skeleton" class="grid grid-3" style="margin-top:12px">
-    <div class="skeleton box"></div>
-    <div class="skeleton box"></div>
-    <div class="skeleton box"></div>
-  </div>
-
-  <!-- 真正內容容器（你的 JS 會把卡片塞進來） -->
-  <div id="history-list" class="grid grid-3" style="display:none"></div>
-
-  <!-- 若你原本頁面有分頁、刪除、查看標記圖等功能，保持相同 id 以沿用 JS -->
-  {# 原 history.html 其它內容放這裡 #}
+  <!-- 照片格狀清單 -->
+  <div id="photoGrid" class="grid grid-3" style="margin-top:20px"></div>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-  // 範例：載入完成後切換骨架 -> 實際清單（你的原本 fetch 完成時也可以做）
-  window.addEventListener('DOMContentLoaded', ()=>{
-    setTimeout(()=>{
-      document.getElementById('history-skeleton').style.display='none';
-      document.getElementById('history-list').style.display='grid';
-    }, 600);
-  });
+  const photoGrid = document.getElementById("photoGrid");
+  const patientId = new URLSearchParams(window.location.search).get("patient") || "";
+
+  fetch(`/history_data?patient=${patientId}`)
+    .then(res => res.json())
+    .then(records => {
+      if (!records.length) {
+        photoGrid.innerHTML = "<p class='muted'>尚無照片</p>";
+        return;
+      }
+      records.forEach(record => {
+        const card = document.createElement("div");
+        card.className = "photo-card card";
+        card.style.cursor = "pointer";
+
+        // 照片
+        const img = document.createElement("img");
+        img.src = record.image_url;
+        img.style.borderRadius = "12px 12px 0 0";
+
+        // 時間
+        const time = document.createElement("div");
+        time.className = "timestamp muted";
+        time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
+
+        card.appendChild(img);
+        card.appendChild(time);
+
+        // 點擊卡片 → 彈窗
+        card.onclick = () => {
+          let table = "<table style='margin:auto; border-collapse:collapse; width:100%'><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
+          if (record.five_regions) {
+            Object.values(record.five_regions).forEach(r => {
+              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
+            });
+          } else {
+            table += "<tr><td colspan='4'>無五區診斷資料</td></tr>";
+          }
+          table += "</table>";
+
+          Swal.fire({
+            title: "🧠 判讀結果",
+            html: `
+              <b>舌苔主色：</b> ${record.main_color || "無資料"}<br><br>
+              ${table}
+            `,
+            confirmButtonText: "關閉",
+            width: "80%"
+          });
+        };
+
+        photoGrid.appendChild(card);
+      });
+    });
 </script>
 {% endblock %}
