@@ -28,10 +28,8 @@
   </div>
 
   <div class="sticky-actions flex" style="justify-content:center; margin-top:16px">
-    <!-- 保留你原本的再練一題路由 -->
-    <a class="btn" href="/quiz">再練一題</a>
-    <!-- 回到教學資源（若路由不同，改成你的網址或 url_for） -->
-    <a class="btn btn-outline" href="{{ url_for('teaching') if 'teaching' in globals() else '/' }}">返回教學</a>
+    <a class="btn" href="{{ url_for('quiz') }}">再練一題</a>
+    <a class="btn btn-outline" href="{{ url_for('teaching') }}">返回教學</a>
   </div>
 </div>
 {% endblock %}
