@@ -112,3 +112,43 @@ p{line-height:1.7}
   transform: translateY(-3px);
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
 }
+
+/* ==== Typography & spacing tweaks ==== */
+h1 { letter-spacing:.2px }
+h2 { letter-spacing:.15px }
+p  { line-height:1.75 }
+
+/* ==== Buttons: size & groups ==== */
+.btn { padding:10px 16px; border-radius:14px; }
+.btn-group { display:flex; gap:8px; flex-wrap:wrap; }
+.btn[disabled] { opacity:.6; cursor:not-allowed }
+
+/* ==== Inputs: consistent sizing ==== */
+.input, select, textarea { min-height:42px; }
+
+/* ==== Card hover (已加過可忽略) ==== */
+.card { transition: transform .12s ease, box-shadow .12s ease; }
+.card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+
+/* ==== Tags / chips ==== */
+.tag { display:inline-block; padding:.25rem .6rem; border-radius:999px; background:#f1f5f9; color:#0f172a; font-size:.85rem }
+
+/* ==== Alerts ==== */
+.alert { border:1px solid #e5e7eb; border-left:4px solid var(--brand-2); background:#f8fafc; padding:12px 14px; border-radius:12px; }
+.alert.error { border-left-color: var(--danger); background:#fff1f2 }
+
+/* ==== TABLE: 漂亮一致的表格樣式 ==== */
+.table-wrap { width:100%; overflow:auto; border-radius:12px; box-shadow: var(--shadow); }
+.table { width:100%; border-collapse:separate; border-spacing:0; background:#fff; }
+.table th, .table td { padding:12px 14px; text-align:left; border-bottom:1px solid #eef2f7; }
+.table thead th { background:#f8fafc; color:#334155; font-weight:600; position:sticky; top:0; z-index:1; }
+.table tr:last-child td { border-bottom:none; }
+.table tr:hover td { background:#f9fbff; }
+.table .cell-muted { color:var(--muted); font-size:.92rem; }
+.table-compact th, .table-compact td { padding:10px 12px; }
+.table-striped tbody tr:nth-child(odd) td { background:#fcfdff; }
+
+/* ==== Responsive helpers ==== */
+@media (max-width: 768px){
+  .table th, .table td { padding:10px 12px; }
+}
