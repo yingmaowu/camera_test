@@ -1,17 +1,37 @@
-<!DOCTYPE html>
-<html>
-<head><title>舌診練習</title></head>
-<body>
-  <h2>{{ question.question }}</h2>
-  <img src="{{ question.image_url }}" alt="舌照" width="300"><br><br>
+{% extends "base.html" %}
+{% block title %}舌象分類練習{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>舌象分類練習</h1>
+  <p class="muted">請觀察圖片並選出最符合的分類。</p>
 
-  <form method="POST" action="/submit_practice_answer">
-    <input type="hidden" name="qid" value="{{ qid }}">
-    {% for choice in question.choices %}
-      <input type="radio" name="answer" value="{{ choice }}" required> {{ choice }}<br>
-    {% endfor %}
-    <br>
-    <button type="submit">提交</button>
-  </form>
-</body>
-</html>
+  <!-- 題目圖片 -->
+  <div class="center" style="margin:12px 0">
+    <img id="question-image" alt="題目圖片" src="{{ question_image if 'question_image' in globals() else '' }}" style="max-height:360px; border-radius:12px">
+  </div>
+
+  <!-- 選項（維持常見 id，沿用你既有 JS） -->
+  <div id="options" class="grid grid-2" style="margin:12px 0">
+    <!-- 你的 JS 會在這裡動態塞選項按鈕 -->
+  </div>
+
+  <div class="flex">
+    <button id="btn-submit" class="btn">提交答案</button>
+    <button id="btn-next" class="btn btn-outline">下一題</button>
+    <div class="right"></div>
+    <a class="btn btn-ghost" href="{{ url_for('teaching') }}">返回教學</a>
+  </div>
+
+  <!-- 顯示答題結果 -->
+  <div id="feedback" class="card" style="margin-top:16px; display:none"></div>
+
+  {# 原 practice.html 其它內容放這裡（例如統計 / 累積分數顯示） #}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // 按鈕鈎子（如你已有更完整 JS，保留你的檔案即可）
+  document.getElementById('btn-submit')?.addEventListener('click', ()=>showToast("已提交","info"));
+  document.getElementById('btn-next')?.addEventListener('click', ()=>location.reload());
+</script>
+{% endblock %}
