@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 {% block title %}答案說明{% endblock %}
+
 {% block content %}
 <div class="card">
   <h1>答案說明</h1>
@@ -22,14 +23,49 @@
     </h3>
   </div>
 
-  <!-- 這一段：把原本「解析」改成「說明」，依題目所在資料夾列出症狀 -->
+  {# ---------------------------------------------------------
+     說明：依 Cloudinary 資料夾（或正確答案）顯示對應症狀
+     - 若後端有傳 category（資料夾名）→ 優先使用
+     - 否則退回用 correct_answer（若你的題目選項與資料夾同名）
+     --------------------------------------------------------- #}
+  {% set SYMPTOMS_BY_CATEGORY = {
+    "灰黑苔": [
+      "多見病勢較重：黑而乾燥偏熱盛傷津；黑而濕潤偏寒濕或陽虛",
+      "乾黑兼焦裂：常見高熱、煩渴、便秘等熱象",
+      "濕黑滑膩：常見畏寒、四肢不溫、腹瀉等寒濕象",
+      "需結合脈象、口渴/惡寒、大小便等綜合判讀"
+    ],
+    "白苔": [
+      "多見表證或寒證；薄白而潤常為正常或外感初起",
+      "白厚而滑常見痰濕內盛",
+      "伴畏寒、流清涕者偏表寒",
+      "可合併舌邊齒痕、苔膩程度評估濕滯"
+    ],
+    "紅紫舌無苔": [
+      "舌質偏紅或帶紫且少苔/無苔：多見陰津不足或陰虛有熱",
+      "紅而無苔：胃陰不足、口乾咽燥、午後潮熱或盜汗",
+      "偏紫：瘀血表現，胸悶刺痛或舌下絡脈曲張可見",
+      "重點觀察口乾舌燥、五心煩熱、睡眠與疼痛等伴隨症"
+    ],
+    "黃苔": [
+      "多主裡熱或濕熱，色越深熱勢越重",
+      "乾黃：偏傷津；黏膩黃：偏濕熱",
+      "常伴口渴、尿少色黃、便秘或大便黏滯",
+      "白轉黃：多為表入里或熱勢漸增"
+    ]
+  } %}
+
+  {% set cat = (category or correct_answer) %}
+  {% set description_items = SYMPTOMS_BY_CATEGORY.get(cat) %}
+
   <div class="card" style="margin-top:12px">
     <h2>說明</h2>
-    {% if category %}
-      <p class="muted" style="margin-top:6px">類別：<strong>{{ category }}</strong></p>
+
+    {% if cat %}
+      <p class="muted" style="margin-top:6px">類別：<strong>{{ cat }}</strong></p>
     {% endif %}
 
-    {% if description_items and description_items|length > 0 %}
+    {% if description_items %}
       <ul style="margin:8px 0 0 1rem">
         {% for item in description_items %}
           <li style="margin:6px 0">{{ item }}</li>
@@ -37,7 +73,8 @@
       </ul>
     {% else %}
       <p class="cell-muted" style="margin-top:6px">
-        尚無對應說明。請在 <code>SYMPTOMS_BY_CATEGORY</code> 增加「{{ category or '類別' }}」的條目。
+        尚無對應說明。若你的資料夾名稱不同，請在此模板的
+        <code>SYMPTOMS_BY_CATEGORY</code> 增加「{{ cat or '（類別）' }}」的條目。
       </p>
     {% endif %}
   </div>
