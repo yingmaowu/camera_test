@@ -4,84 +4,53 @@
 <div class="card">
   <h1>📁 歷史照片紀錄</h1>
   <p class="muted">瀏覽過往拍攝影像與五區診斷。</p>
-
-  <div id="photoGrid" class="grid grid-3" style="margin-top:20px"></div>
+  <div id="photoGrid" class="grid grid-3" style="margin-top:12px"></div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
   const photoGrid = document.getElementById("photoGrid");
-  // 後端有傳 patient_id 時優先使用；否則用網址參數
-  const patientId =
-    "{{ patient_id|default('') }}"?.trim() ||
-    new URLSearchParams(window.location.search).get("patient") || "";
+  const patientId = ("{{ patient_id|default('') }}".trim()) || new URLSearchParams(location.search).get("patient") || "";
+  if (!patientId) location.href = "{{ url_for('id_input', next='history') }}";
 
-  if (!patientId) {
-    // 沒帶病患ID就導回輸入頁
-    location.href = "{{ url_for('id_input', next='history') }}";
-  }
-
-  // ✅ 這裡改成正確的 endpoint 名稱 get_history_data
   fetch(`{{ url_for('get_history_data') }}?patient=${encodeURIComponent(patientId)}`)
     .then(res => res.json())
     .then(records => {
-      if (!records.length) {
-        photoGrid.innerHTML = "<p class='muted'>尚無照片</p>";
-        return;
-      }
+      if (!records.length) { photoGrid.innerHTML = "<p class='muted'>尚無照片</p>"; return; }
       records.forEach(record => {
         const card = document.createElement("div");
-        card.className = "photo-card card";
-        card.style.cursor = "pointer";
+        card.className = "photo-card card"; card.style.cursor = "pointer";
 
         const img = document.createElement("img");
-        img.src = record.image_url;
-        img.alt = "舌照";
-        img.style.borderRadius = "12px 12px 0 0";
-        img.style.width = "100%";
-        img.style.display = "block";
+        img.src = record.image_url; img.alt = "舌照"; img.style.borderRadius = "12px 12px 0 0";
+        img.onerror = () => { img.src = "{{ url_for('static', filename='img/missing.png') }}"; img.alt = "圖片已刪除"; card.classList.add("is-missing"); };
 
-        const time = document.createElement("div");
-        time.className = "timestamp muted";
-        try {
-          time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
-        } catch { time.textContent = record.timestamp || ""; }
+        const meta = document.createElement("div");
+        meta.className = "muted"; meta.style.padding = "8px 10px";
+        try { meta.textContent = new Date(record.timestamp).toLocaleString("zh-TW"); }
+        catch { meta.textContent = record.timestamp || ""; }
 
-        card.appendChild(img);
-        card.appendChild(time);
-
+        card.appendChild(img); card.appendChild(meta);
         card.onclick = () => {
           let table = "<div class='table-wrap'><table class='table table-compact'><thead><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr></thead><tbody>";
           if (record.five_regions) {
             Object.values(record.five_regions).forEach(r => {
               table += `<tr><td>${r.區域||''}</td><td>${r.診斷||''}</td><td class='cell-muted'>${r.理論||''}</td><td class='cell-muted'>${r.建議||''}</td></tr>`;
             });
-          } else {
-            table += "<tr><td colspan='4' class='cell-muted'>無五區診斷資料</td></tr>";
-          }
+          } else { table += "<tr><td colspan='4' class='cell-muted'>無五區診斷資料</td></tr>"; }
           table += "</tbody></table></div>";
 
-          const mainColor = record.main_color ? `<span class="swatch" style="background:${record.main_color}; margin-right:6px"></span> <b>${record.main_color}</b>` : "無資料";
-
+          const mainColor = record.main_color ? `<span class="swatch" style="background:${record.main_color}; margin-right:6px"></span><b>${record.main_color}</b>` : "無資料";
           Swal.fire({
             title: "🧠 判讀結果",
-            html: `
-              <div style="text-align:left">
-                <p><b>舌苔主色：</b> ${mainColor}</p>
-                ${table}
-              </div>
-            `,
-            confirmButtonText: "關閉",
-            width: "80%"
+            html: `<div style="text-align:left"><p><b>舌苔主色：</b> ${mainColor}</p>${table}</div>`,
+            confirmButtonText: "關閉", width: "100%", maxWidth: "640px"
           });
         };
-
         photoGrid.appendChild(card);
       });
     })
-    .catch(e=>{
-      photoGrid.innerHTML = `<div class="alert error">載入失敗：${e.message}</div>`;
-    });
+    .catch(e=>{ photoGrid.innerHTML = `<div class="alert error">載入失敗：${e.message}</div>`; });
 </script>
 {% endblock %}
