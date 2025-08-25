@@ -15,13 +15,13 @@
       <button class="btn btn-ghost" onclick="history.back()" aria-label="上一頁">← 上一頁</button>
     </div>
     <div class="nav__center">
-      <a class="nav__brand" href="{{ url_for('home') if 'home' in globals() else '/' }}">舌苔辨識與教學</a>
+      <a class="nav__brand" href="{{ url_for('home') }}">舌苔辨識與教學</a>
     </div>
     <div class="nav__right">
-      <a class="btn" href="{{ url_for('index') if 'index' in globals() else '#' }}">相機</a>
-      <a class="btn" href="{{ url_for('history') if 'history' in globals() else '#' }}">歷史</a>
-      <a class="btn" href="{{ url_for('teaching') if 'teaching' in globals() else '#' }}">教學</a>
-      <a class="btn btn-outline" href="{{ url_for('practice') if 'practice' in globals() else '#' }}">練習</a>
+      <a class="btn" href="{{ url_for('index') }}">相機</a>
+      <a class="btn" href="{{ url_for('history') }}">歷史</a>
+      <a class="btn" href="{{ url_for('teaching') }}">教學</a>
+      <a class="btn btn-outline" href="{{ url_for('quiz') }}">練習</a>
     </div>
   </header>
 
@@ -34,8 +34,8 @@
   <footer class="footer">
     <div>© {{ 2025 }} 幸福吳家 · 舌苔系統</div>
     <div class="footer__links">
-      <a href="{{ url_for('home') if 'home' in globals() else '/' }}">首頁</a>
-      <a href="{{ url_for('teaching') if 'teaching' in globals() else '#' }}">教學資源</a>
+      <a href="{{ url_for('home') }}">首頁</a>
+      <a href="{{ url_for('teaching') }}">教學資源</a>
     </div>
   </footer>
 
