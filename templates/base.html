@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{% block title %}舌苔系統{% endblock %}</title>
+  <title>{% block title %}中醫舌苔系統{% endblock %}</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -32,7 +32,7 @@
     </div>
 
     <div class="nav__center">
-      <a class="nav__brand" href="{{ url_for('home') }}">舌苔辨識與教學</a>
+      <a class="nav__brand" href="{{ url_for('home') }}">中醫舌苔系統</a>
     </div>
 
     <div class="nav__right" style="display:flex; align-items:center; gap:8px">
@@ -61,7 +61,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <div>© {{ 2025 }} 幸福吳家 · 舌苔系統</div>
+    <div>© {{ 2025 }} 中醫舌苔系統</div>
     <div class="footer__links">
       <a href="{{ url_for('home') }}">首頁</a>
       <a href="{{ url_for('teaching') }}">教學資源</a>
