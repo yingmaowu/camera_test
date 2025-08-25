@@ -1,37 +1,54 @@
 {% extends "base.html" %}
-{% block title %}舌象分類練習{% endblock %}
+{% block title %}舌診練習{% endblock %}
+
 {% block content %}
 <div class="card">
-  <h1>舌象分類練習</h1>
-  <p class="muted">請觀察圖片並選出最符合的分類。</p>
+  <h1>舌診練習</h1>
+  <p class="muted">請觀察圖片並選出最符合的選項。</p>
 
-  <!-- 題目圖片 -->
+  <!-- 題幹 -->
+  <h2 style="margin-top:8px">{{ question.question }}</h2>
+
+  <!-- 題圖 -->
   <div class="center" style="margin:12px 0">
-    <img id="question-image" alt="題目圖片" src="{{ question_image if 'question_image' in globals() else '' }}" style="max-height:360px; border-radius:12px">
+    <img src="{{ question.image_url }}" alt="舌照" style="max-height:360px; border-radius:12px">
   </div>
 
-  <!-- 選項（維持常見 id，沿用你既有 JS） -->
-  <div id="options" class="grid grid-2" style="margin:12px 0">
-    <!-- 你的 JS 會在這裡動態塞選項按鈕 -->
-  </div>
+  <!-- 作答表單 -->
+  <form method="POST" action="/submit_practice_answer" class="flex-col">
+    <input type="hidden" name="qid" value="{{ qid }}">
 
-  <div class="flex">
-    <button id="btn-submit" class="btn">提交答案</button>
-    <button id="btn-next" class="btn btn-outline">下一題</button>
-    <div class="right"></div>
-    <a class="btn btn-ghost" href="{{ url_for('teaching') }}">返回教學</a>
-  </div>
+    <div class="grid grid-2" id="options">
+      {% for choice in question.choices %}
+      <label class="card" style="display:flex; align-items:center; gap:10px; cursor:pointer">
+        <input type="radio" name="answer" value="{{ choice }}" required>
+        <span>{{ choice }}</span>
+      </label>
+      {% endfor %}
+    </div>
 
-  <!-- 顯示答題結果 -->
-  <div id="feedback" class="card" style="margin-top:16px; display:none"></div>
-
-  {# 原 practice.html 其它內容放這裡（例如統計 / 累積分數顯示） #}
+    <div class="sticky-actions flex" style="justify-content:center; margin-top:8px">
+      <button type="submit" class="btn">提交</button>
+      <a class="btn btn-outline" href="{{ url_for('teaching') if 'teaching' in globals() else '/' }}">返回教學</a>
+    </div>
+  </form>
 </div>
 {% endblock %}
+
 {% block scripts %}
 <script>
-  // 按鈕鈎子（如你已有更完整 JS，保留你的檔案即可）
-  document.getElementById('btn-submit')?.addEventListener('click', ()=>showToast("已提交","info"));
-  document.getElementById('btn-next')?.addEventListener('click', ()=>location.reload());
+  // 可用性：載入後自動聚焦到第一個選項
+  window.addEventListener('DOMContentLoaded', () => {
+    const first = document.querySelector('input[name="answer"]');
+    first && first.focus();
+  });
+
+  // 方便鍵盤操作：Enter 直接提交
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && document.activeElement?.name === 'answer') {
+      e.preventDefault();
+      document.querySelector('button[type="submit"]')?.click();
+    }
+  });
 </script>
 {% endblock %}
