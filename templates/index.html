@@ -26,33 +26,20 @@
   const overlay = document.getElementById("overlay");
   const captureBtn = document.getElementById("captureBtn");
   const historyBtn = document.getElementById("historyBtn");
-  const patientId = new URLSearchParams(window.location.search).get("patient") || "unknown";
+  const patientId = new URLSearchParams(window.location.search).get("patient") || "";
 
-  // 解決返回上一頁相機黑畫面問題
-  window.addEventListener("pageshow", function(event) {
-    if (event.persisted || (window.performance && window.performance.navigation.type === 2)) {
-      window.location.reload();
-    }
-  });
+  // 沒有病患ID就導回輸入頁（後端也建議加防呆）
+  if (!patientId) {
+    window.location.href = "{{ url_for('id_input', next='index') }}";
+  }
 
   // 啟動相機
   navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" } } })
-    .then(stream => {
-      video.srcObject = stream;
-      return new Promise(resolve => {
-        video.onloadedmetadata = () => {
-          video.play();
-          resolve();
-        };
-      });
-    })
-    .catch(err => {
-      Swal.fire("❌ 相機啟動失敗", err.message, "error");
-    });
+    .then(stream => { video.srcObject = stream; return new Promise(r => video.onloadedmetadata = () => (video.play(), r())); })
+    .catch(err => Swal.fire("❌ 相機啟動失敗", err.message, "error"));
 
   let capturedBlob = null;
 
-  // 拍照（含 overlay 疊圖）
   function captureImage() {
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
@@ -60,50 +47,30 @@
     const ctx = canvas.getContext("2d");
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
     ctx.drawImage(overlay, 0, 0, canvas.width, canvas.height);
-    return new Promise(resolve => {
-      canvas.toBlob(blob => {
-        capturedBlob = blob;
-        resolve();
-      }, "image/jpeg");
-    });
+    return new Promise(resolve => canvas.toBlob(b => (capturedBlob = b, resolve()), "image/jpeg"));
   }
 
-  // 點擊拍照並上傳
   captureBtn.addEventListener("click", async () => {
     await captureImage();
-    Swal.fire({
-      title: "確定要上傳這張照片嗎？",
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "上傳",
-      cancelButtonText: "取消"
-    }).then(result => {
-      if (result.isConfirmed && capturedBlob) {
-        const formData = new FormData();
-        formData.append("image", capturedBlob, "tongue.jpg");
-        formData.append("patient_id", patientId);
-
-        fetch("/upload", { method: "POST", body: formData })
-          .then(res => res.json())
-          .then(data => {
-            if (data.success) {
-              Swal.fire("✅ 上傳成功", "即將跳轉至健康紀錄", "success").then(() => {
-                window.location.href = `/history?patient=${patientId}`;
-              });
-            } else {
-              Swal.fire("❌ 上傳失敗", data.error || "請稍後再試", "error");
-            }
-          })
-          .catch(err => {
-            Swal.fire("❌ 錯誤", err.message, "error");
-          });
-      }
-    });
+    Swal.fire({ title:"確定要上傳這張照片嗎？", icon:"question", showCancelButton:true, confirmButtonText:"上傳", cancelButtonText:"取消" })
+      .then(res=>{
+        if(res.isConfirmed && capturedBlob){
+          const fd = new FormData();
+          fd.append("image", capturedBlob, "tongue.jpg");
+          fd.append("patient_id", patientId);
+          fetch("{{ url_for('upload') }}", { method:"POST", body: fd })
+            .then(r=>r.json())
+            .then(d=>{
+              if(d.success){
+                Swal.fire("✅ 上傳成功","即將跳轉至歷史紀錄","success").then(()=>location.href=`{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
+              }else{
+                Swal.fire("❌ 上傳失敗", d.error || "請稍後再試", "error");
+              }
+            }).catch(e=>Swal.fire("❌ 錯誤", e.message, "error"));
+        }
+      });
   });
 
-  // 查看歷史
-  historyBtn.addEventListener("click", () => {
-    window.location.href = `/history?patient=${patientId}`;
-  });
+  historyBtn.addEventListener("click", ()=> location.href = `{{ url_for('history') }}?patient=${encodeURIComponent(patientId)}`);
 </script>
 {% endblock %}
