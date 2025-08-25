@@ -12,12 +12,18 @@
 {% block scripts %}
 <script>
   const photoGrid = document.getElementById("photoGrid");
-  const patientId = new URLSearchParams(window.location.search).get("patient") || "";
+  // 後端有傳 patient_id 時優先使用；否則用網址參數
+  const patientId =
+    "{{ patient_id|default('') }}"?.trim() ||
+    new URLSearchParams(window.location.search).get("patient") || "";
+
   if (!patientId) {
+    // 沒帶病患ID就導回輸入頁
     location.href = "{{ url_for('id_input', next='history') }}";
   }
 
-  fetch(`{{ url_for('history_data') }}?patient=${patientId}`)
+  // ✅ 這裡改成正確的 endpoint 名稱 get_history_data
+  fetch(`{{ url_for('get_history_data') }}?patient=${encodeURIComponent(patientId)}`)
     .then(res => res.json())
     .then(records => {
       if (!records.length) {
@@ -31,7 +37,10 @@
 
         const img = document.createElement("img");
         img.src = record.image_url;
+        img.alt = "舌照";
         img.style.borderRadius = "12px 12px 0 0";
+        img.style.width = "100%";
+        img.style.display = "block";
 
         const time = document.createElement("div");
         time.className = "timestamp muted";
@@ -53,11 +62,13 @@
           }
           table += "</tbody></table></div>";
 
+          const mainColor = record.main_color ? `<span class="swatch" style="background:${record.main_color}; margin-right:6px"></span> <b>${record.main_color}</b>` : "無資料";
+
           Swal.fire({
             title: "🧠 判讀結果",
             html: `
               <div style="text-align:left">
-                <p><b>舌苔主色：</b> ${record.main_color || "無資料"}</p>
+                <p><b>舌苔主色：</b> ${mainColor}</p>
                 ${table}
               </div>
             `,
