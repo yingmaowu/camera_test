@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    /* 下拉選單的極簡樣式（可按需移到 theme.css） */
+    /* 下拉選單簡單樣式 */
     .dropdown { position: relative; }
     .dropdown-toggle { display:inline-flex; align-items:center; gap:6px; }
     .dropdown-menu {
@@ -36,18 +36,19 @@
     </div>
 
     <div class="nav__right" style="display:flex; align-items:center; gap:8px">
-      <a class="btn" href="{{ url_for('index') }}">相機</a>
-      <a class="btn" href="{{ url_for('history') }}">歷史</a>
-      <a class="btn" href="{{ url_for('teaching') }}">教學</a>
+      <a class="btn" href="{{ url_for('index') }}">舌苔辨識</a>
+      <a class="btn" href="{{ url_for('history') }}">歷史紀錄</a>
 
-      <!-- 練習：做成下拉 -->
-      <div class="dropdown" id="practiceDropdown">
+      <!-- 教學資源：下拉選單 -->
+      <div class="dropdown" id="teachingDropdown">
         <button class="btn btn-outline dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
-          練習 ▾
+          教學資源 ▾
         </button>
-        <div class="dropdown-menu" role="menu" aria-label="練習選單">
+        <div class="dropdown-menu" role="menu" aria-label="教學選單">
+          <a class="dropdown-item" href="{{ url_for('tongue_teaching_static') }}">舌象分類教學</a>
           <a class="dropdown-item" href="{{ url_for('quiz') }}">舌象判別練習</a>
           <a class="dropdown-item" href="/practice/">中醫五區辨識練習</a>
+          <a class="dropdown-item" href="{{ url_for('tongue_quiz') }}">舌頭知識問答</a>
         </div>
       </div>
     </div>
@@ -69,11 +70,10 @@
 
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
   <script>
-    // 下拉選單 JS：點擊切換、點外面關閉、Esc 關閉
+    // 下拉選單 JS
     (function(){
-      const dd = document.getElementById('practiceDropdown');
+      const dd = document.getElementById('teachingDropdown');
       const toggle = dd.querySelector('.dropdown-toggle');
-      const menu = dd.querySelector('.dropdown-menu');
 
       toggle.addEventListener('click', (e)=>{
         e.stopPropagation();
