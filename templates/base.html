@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
-    /* 下拉選單簡單樣式 */
+    /* 下拉選單簡易樣式（也可搬到 theme.css） */
     .dropdown { position: relative; }
     .dropdown-toggle { display:inline-flex; align-items:center; gap:6px; }
     .dropdown-menu {
@@ -36,8 +36,11 @@
     </div>
 
     <div class="nav__right" style="display:flex; align-items:center; gap:8px">
-      <a class="btn" href="{{ url_for('index') }}">舌苔辨識</a>
-      <a class="btn" href="{{ url_for('history') }}">歷史紀錄</a>
+      <!-- 舌苔辨識：先輸入病患 ID -->
+      <a class="btn" href="{{ url_for('id_input', next='index') }}">舌苔辨識</a>
+
+      <!-- 歷史紀錄：先輸入病患 ID -->
+      <a class="btn" href="{{ url_for('id_input', next='history') }}">歷史紀錄</a>
 
       <!-- 教學資源：下拉選單 -->
       <div class="dropdown" id="teachingDropdown">
@@ -61,7 +64,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <div>© {{ 2025 }} 中醫舌苔系統</div>
+    <div> 中醫舌苔系統</div>
     <div class="footer__links">
       <a href="{{ url_for('home') }}">首頁</a>
       <a href="{{ url_for('teaching') }}">教學資源</a>
@@ -70,24 +73,21 @@
 
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
   <script>
-    // 下拉選單 JS
+    // 教學資源下拉 JS
     (function(){
       const dd = document.getElementById('teachingDropdown');
       const toggle = dd.querySelector('.dropdown-toggle');
-
       toggle.addEventListener('click', (e)=>{
         e.stopPropagation();
         const open = dd.classList.toggle('open');
         toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
-
       document.addEventListener('click', (e)=>{
         if (!dd.contains(e.target)) {
           dd.classList.remove('open');
           toggle.setAttribute('aria-expanded','false');
         }
       });
-
       document.addEventListener('keydown', (e)=>{
         if (e.key === 'Escape') {
           dd.classList.remove('open');
