@@ -9,7 +9,7 @@
   <div class="flex-col" style="margin-top:20px; gap:16px; align-items:center">
     <a class="btn btn-block" href="{{ url_for('tongue_teaching_static') }}">舌象分類教學</a>
     <a class="btn btn-block" href="{{ url_for('quiz') }}">舌象判別練習</a>
-    <a class="btn btn-block" href="{{ url_for('practice.index') }}">中醫五區辨識練習</a>
+    <a class="btn btn-block" href="/practice/">中醫五區辨識練習</a>  {# ← 改成硬路徑，避免 endpoint 名稱不同 #}
     <a class="btn btn-block" href="{{ url_for('tongue_quiz') }}">舌頭知識問答</a>
   </div>
 
