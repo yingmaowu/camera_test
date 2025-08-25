@@ -7,6 +7,22 @@
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <style>
+    /* 下拉選單的極簡樣式（可按需移到 theme.css） */
+    .dropdown { position: relative; }
+    .dropdown-toggle { display:inline-flex; align-items:center; gap:6px; }
+    .dropdown-menu {
+      position: absolute; right: 0; top: calc(100% + 6px);
+      min-width: 220px; background: #fff; border: 1px solid #e5e7eb;
+      border-radius: 12px; box-shadow: var(--shadow); padding: 6px; display: none;
+      z-index: 100;
+    }
+    .dropdown.open .dropdown-menu { display: block; }
+    .dropdown-item {
+      display:block; padding:10px 12px; border-radius:10px; text-decoration:none; color:var(--text);
+    }
+    .dropdown-item:hover { background:#f5f7fb; }
+  </style>
 </head>
 <body>
   <!-- Top Nav -->
@@ -14,14 +30,26 @@
     <div class="nav__left">
       <button class="btn btn-ghost" onclick="history.back()" aria-label="上一頁">← 上一頁</button>
     </div>
+
     <div class="nav__center">
       <a class="nav__brand" href="{{ url_for('home') }}">舌苔辨識與教學</a>
     </div>
-    <div class="nav__right">
-      <a class="btn" href="{{ url_for('index') }}">舌苔辨識</a>
-      <a class="btn" href="{{ url_for('history') }}">歷史紀錄</a>
-      <a class="btn" href="{{ url_for('teaching') }}">教學資源</a>
-      <a class="btn btn-outline" href="{{ url_for('quiz') }}">練習</a>
+
+    <div class="nav__right" style="display:flex; align-items:center; gap:8px">
+      <a class="btn" href="{{ url_for('index') }}">相機</a>
+      <a class="btn" href="{{ url_for('history') }}">歷史</a>
+      <a class="btn" href="{{ url_for('teaching') }}">教學</a>
+
+      <!-- 練習：做成下拉 -->
+      <div class="dropdown" id="practiceDropdown">
+        <button class="btn btn-outline dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">
+          練習 ▾
+        </button>
+        <div class="dropdown-menu" role="menu" aria-label="練習選單">
+          <a class="dropdown-item" href="{{ url_for('quiz') }}">舌象判別練習</a>
+          <a class="dropdown-item" href="/practice/">中醫五區辨識練習</a>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -32,7 +60,7 @@
 
   <!-- Footer -->
   <footer class="footer">
-    <div>© {{ 2025 }}舌苔系統</div>
+    <div>© {{ 2025 }} 幸福吳家 · 舌苔系統</div>
     <div class="footer__links">
       <a href="{{ url_for('home') }}">首頁</a>
       <a href="{{ url_for('teaching') }}">教學資源</a>
@@ -40,6 +68,34 @@
   </footer>
 
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
+  <script>
+    // 下拉選單 JS：點擊切換、點外面關閉、Esc 關閉
+    (function(){
+      const dd = document.getElementById('practiceDropdown');
+      const toggle = dd.querySelector('.dropdown-toggle');
+      const menu = dd.querySelector('.dropdown-menu');
+
+      toggle.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const open = dd.classList.toggle('open');
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      document.addEventListener('click', (e)=>{
+        if (!dd.contains(e.target)) {
+          dd.classList.remove('open');
+          toggle.setAttribute('aria-expanded','false');
+        }
+      });
+
+      document.addEventListener('keydown', (e)=>{
+        if (e.key === 'Escape') {
+          dd.classList.remove('open');
+          toggle.setAttribute('aria-expanded','false');
+        }
+      });
+    })();
+  </script>
   {% block scripts %}{% endblock %}
 </body>
 </html>
