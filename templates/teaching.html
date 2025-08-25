@@ -7,28 +7,24 @@
   <p class="muted">這裡提供舌診相關的教學與練習模組，幫助你學習、演練與驗證。</p>
 
   <div class="grid grid-2" style="margin-top:16px">
-    <!-- 舌象分類教學 -->
     <a class="card" href="{{ url_for('tongue_teaching_static') }}" style="text-decoration:none; color:inherit; transition:transform .08s ease">
       <h2>📘 舌象分類教學</h2>
       <p>認識不同舌苔類型的特徵，建立基本判讀概念。</p>
       <span class="badge">教學</span>
     </a>
 
-    <!-- 舌象判別練習（Cloudinary 出題） -->
     <a class="card" href="{{ url_for('quiz') }}" style="text-decoration:none; color:inherit; transition:transform .08s ease">
       <h2>🧩 舌象判別練習</h2>
       <p>從隨機舌照判斷舌象，提交後立即看到解析。</p>
       <span class="badge">練習</span>
     </a>
 
-    <!-- 中醫五區辨識練習（Blueprint 首頁以硬路徑最穩）-->
     <a class="card" href="/practice/" style="text-decoration:none; color:inherit; transition:transform .08s ease">
       <h2>🧭 中醫五區辨識練習</h2>
       <p>依舌尖、舌邊、舌中、舌根分區練習五區診斷。</p>
       <span class="badge">練習</span>
     </a>
 
-    <!-- 舌頭知識問答 -->
     <a class="card" href="{{ url_for('tongue_quiz') }}" style="text-decoration:none; color:inherit; transition:transform .08s ease">
       <h2>❓ 舌頭知識問答</h2>
       <p>以問答方式檢視你對舌診理論與知識的掌握。</p>
