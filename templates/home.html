@@ -6,7 +6,6 @@
   <p class="muted">請選擇要進行的功能：</p>
 
   <div class="flex-col" style="align-items:center; margin-top:16px; gap:16px">
-    <!-- 進入相機前先輸入病患ID：導向 /id?next=index -->
     <a class="btn btn-block" href="{{ url_for('id_input', next='index') }}">舌苔辨識</a>
     <a class="btn btn-block" href="{{ url_for('teaching') }}">教學資源</a>
   </div>
