@@ -1,91 +1,188 @@
-// === 舌象分類教學 ===
-// 來自 rrrrr-main 的資料表（20 組）：把「部位_顏色」對應到判讀/方劑/典籍
-const data = {
-  "腎_white":{"message":"腎白：腎陽不足或寒象偏重，舌苔偏白。","herb":"六味地黃丸（視症加減）","classic":"腎陽虛多見白苔，畏寒肢冷。"},
-  "腎_gold":{"message":"腎黃：多見濕熱或虛熱上蒸，舌苔偏黃。","herb":"知柏地黃丸（視症加減）","classic":"陰虛火旺或濕熱下注時，苔可見黃。"},
-  "腎_black":{"message":"腎黑：多屬寒極或瘀象，色黑多見於舌根。","herb":"附子理中湯、活血化瘀法（依症）","classic":"寒盛則黑，或久病入絡見瘀滯。"},
-  "腎_red":{"message":"腎紅：陰虛內熱，舌質紅或偏紅，苔少。","herb":"六味地黃丸、知柏地黃丸（依症）","classic":"腎陰虛則潮熱盜汗，舌紅少苔。"},
-  "肝_white":{"message":"肝白：多偏寒或氣滯，苔白薄。","herb":"柴胡疏肝散（依症）","classic":"寒主收引，色白；肝鬱亦可見白苔。"},
-  "肝_gold":{"message":"肝黃：多見肝膽濕熱，苔黃膩。","herb":"龍膽瀉肝湯","classic":"濕熱下注或肝膽鬱熱，苔黃而膩。"},
-  "肝_black":{"message":"肝黑：多屬瘀血內阻或寒凝，見色黑暗。","herb":"血府逐瘀湯（依症）","classic":"久瘀則色暗或近黑，痛有定處。"},
-  "肝_red":{"message":"肝紅：肝火偏旺或陰虛火亢，舌紅少苔。","herb":"龍膽瀉肝湯、滋陰降火（依症）","classic":"肝火上炎，目赤易怒；或陰虛火旺舌紅。"},
-  "膽_white":{"message":"膽白：偏寒或膽氣不舒，苔白薄。","herb":"小柴胡湯（依症）","classic":"少陽不和，寒熱往來，苔可見白。"},
-  "膽_gold":{"message":"膽黃：膽經濕熱，苔黃膩。","herb":"龍膽瀉肝湯","classic":"肝膽濕熱，口苦目眩，苔黃膩。"},
-  "膽_black":{"message":"膽黑：多為寒濕重或瘀阻，色黑。","herb":"溫陽化濕、活血化瘀法（依症）","classic":"寒濕凝滯，色黑暗而舌苔厚。"},
-  "膽_red":{"message":"膽紅：少陽鬱熱或陰虛內熱，舌紅少苔。","herb":"小柴胡湯合滋陰藥（依症）","classic":"少陽熱鬱，口苦胸脅苦滿。"},
-  "脾胃_white":{"message":"脾胃白：多見寒濕或陽虛，苔白厚或白膩。","herb":"理中湯、平胃散（依症）","classic":"脾陽不振，運化失常，白苔或膩苔。"},
-  "脾胃_gold":{"message":"脾胃黃：濕熱困脾，苔黃膩。","herb":"黃連溫膽湯、平胃散加味（依症）","classic":"濕熱內蘊，納呆腹脹，苔黃膩。"},
-  "脾胃_black":{"message":"脾胃黑：多為寒極或久病入絡，舌苔黯黑。","herb":"溫陽散寒、活血之品（依症）","classic":"寒盛則黑，或瘀阻日久。"},
-  "脾胃_red":{"message":"脾胃紅：胃陰不足或虛熱，舌紅少苔。","herb":"養陰清熱品（依症）","classic":"陰傷少津，苔少或無苔。"},
-  "心肺_white":{"message":"心肺白：多見外感初起或寒象，苔白薄。","herb":"荊防敗毒散等（依症）","classic":"風寒束表或陽氣不足，苔白薄。"},
-  "心肺_gold":{"message":"心肺黃：熱象或痰熱，苔黃。","herb":"清熱化痰或瀉心之劑（依症）","classic":"熱盛則黃，痰熱壅阻咳嗽。"},
-  "心肺_black":{"message":"心肺黑：寒凝血瘀或久病，色黑暗。","herb":"溫陽化瘀法（依症）","classic":"寒凝血瘀，脈澀舌黯。"},
-  "心肺_red":{"message":"心肺紅：多屬熱盛或陰虛火旺，舌紅少苔。","herb":"清心瀉火或滋陰降火（依症）","classic":"心火亢或陰虛火旺，口舌生瘡。"}
-};
+;(() => {
+  // === 互動資料 ===
+  const REGIONS = [
+    { key: "tip",  label: "舌尖（心）" },
+    { key: "side", label: "舌邊（肝膽）" },
+    { key: "center", label: "舌中（脾胃）" },
+    { key: "root", label: "舌根（腎）" },
+  ];
 
-const regions = ["腎", "肝", "膽", "脾胃", "心肺"];
-const colors = [
-  { key: "white", label: "白" },
-  { key: "gold", label: "黃" },
-  { key: "black", label: "黑" },
-  { key: "red", label: "紅" }
-];
+  const COLORS = [
+    { key: "white", label: "白苔" },
+    { key: "yellow", label: "黃苔" },
+    { key: "red", label: "紅舌" },
+    { key: "pale", label: "淡舌" },
+    { key: "thick", label: "厚苔" },
+    { key: "thin", label: "薄苔" },
+    { key: "black", label: "灰黑苔" },
+    { key: "none", label: "紅紫舌無苔" },
+  ];
 
-let selectedRegion = null;
-let selectedColor = null;
+  // === 說明對照（找不到部位專屬→退回顏色一般說明） ===
+  const EXPLAINS = {
+    // 顏色一般說明（fallback）
+    _color: {
+      white: [
+        "多見表證或寒證；薄白而潤常為正常或外感初起。",
+        "白厚而滑常見痰濕內盛。"
+      ],
+      yellow: [
+        "主裡熱或濕熱，色越深熱勢越重。",
+        "乾黃偏傷津；黏膩黃偏濕熱。"
+      ],
+      red: [
+        "舌質偏紅，多見熱證或陰虛火旺。",
+        "紅少苔偏陰虛；紅黃苔偏實熱。"
+      ],
+      pale: [
+        "舌質淡白，多見氣血不足或陽虛。",
+        "胖大齒痕多偏脾陽不足、痰濕。"
+      ],
+      thick: [
+        "苔厚不易見舌質，多與痰濕、食積或實證相關。",
+        "厚膩偏濕阻；厚乾偏熱盛傷津。"
+      ],
+      thin: [
+        "苔薄可見舌質，常屬正常或外感初起。",
+        "薄少而紅可能陰虛有熱。"
+      ],
+      black: [
+        "灰黑苔多見病勢較重；黑乾偏熱盛傷津；黑濕偏寒濕或陽虛。"
+      ],
+      none: [
+        "紅紫舌無苔多見陰津不足或陰虛有熱；偏紫可見瘀血徵象。"
+      ]
+    },
 
-function renderButtons() {
-  const rbox = document.getElementById('region-btns');
-  rbox.innerHTML = '';
-  regions.forEach(r => {
-    const b = document.createElement('button');
-    b.className = 'btn' + (selectedRegion === r ? ' active' : '');
-    b.textContent = r;
-    b.onclick = () => { selectedRegion = r; renderButtons(); renderResult(); };
-    rbox.appendChild(b);
-  });
+    // 舌尖（心）
+    tip: {
+      red: [
+        "心火偏旺或心陰不足 → 舌尖偏紅。",
+        "可伴煩躁、失眠、口瘡等。"
+      ],
+      white: [
+        "外感初起或偏寒；薄白且潤通常無大礙。"
+      ],
+      yellow: [
+        "心火上炎或裡熱上擾，注意失眠、心悸等伴隨症。"
+      ]
+    },
+    // 舌邊（肝膽）
+    side: {
+      red: [
+        "肝膽鬱火偏旺 → 舌邊偏紅。",
+        "易伴口苦、易怒、頭痛。"
+      ],
+      yellow: [
+        "肝膽濕熱偏重，黃苔支持此判斷。"
+      ],
+      pale: [
+        "肝血不足或脾不生血，舌邊偏淡。"
+      ]
+    },
+    // 舌中（脾胃）
+    center: {
+      yellow: [
+        "脾胃濕熱或裡熱偏重。",
+        "可伴口黏膩、口渴、便秘/黏滯感。"
+      ],
+      thick: [
+        "食積或痰濕阻滯，苔厚常見。"
+      ],
+      white: [
+        "薄白多正常；厚白滑 → 脾運失健、痰濕。"
+      ],
+      thin: [
+        "苔薄可見舌質，若少苔且紅 → 陰虛內熱傾向。"
+      ]
+    },
+    // 舌根（腎）
+    root: {
+      black: [
+        "灰黑苔見於病勢較重；黑濕偏陽虛寒濕，黑乾偏熱盛傷津。"
+      ],
+      none: [
+        "根部無苔且舌質紅紫 → 腎陰不足或陰虛火旺可能性增加。"
+      ],
+      pale: [
+        "腎陽不足傾向可見根部偏淡，伴畏寒、四肢不溫。"
+      ]
+    }
+  };
 
-  const cbox = document.getElementById('color-btns');
-  cbox.innerHTML = '';
-  colors.forEach(c => {
-    const b = document.createElement('button');
-    b.className = 'btn' + (selectedColor === c.key ? ' active' : '');
-    b.textContent = c.label;
-    b.onclick = () => { selectedColor = c.key; renderButtons(); renderResult(); };
-    cbox.appendChild(b);
-  });
-}
-
-function keyFor(region, colorKey) {
-  // 使用格式：腎_white / 肝_gold / ...
-  return region + '_' + colorKey;
-}
-
-function renderResult() {
-  const box = document.getElementById('result');
-  if (!selectedRegion || !selectedColor) {
-    box.innerHTML = '<span class="muted">請先選擇部位與顏色</span>';
-    return;
+  // === 小工具 ===
+  function createBtn(label, onClick) {
+    const a = document.createElement("button");
+    a.type = "button";
+    a.className = "btn btn-outline";
+    a.textContent = label;
+    a.addEventListener("click", onClick);
+    return a;
   }
-  const key = keyFor(selectedRegion, selectedColor);
-  const item = data[key];
-  if (!item) {
-    box.innerHTML = '<span class="muted">找不到此組合的教學資料（' + key + '）</span>';
-    return;
+
+  function renderList(items) {
+    if (!items || !items.length) return "<p class='muted'>暫無說明</p>";
+    return `<ul style="margin:6px 0 0 1rem">${ items.map(x => `<li style="margin:6px 0">${x}</li>`).join("") }</ul>`;
   }
-  const msg = item.message || '';
-  const herb = item.herb || '';
-  const classic = item.classic || '';
-  const colorLabel = (colors.find(c=>c.key===selectedColor)||{}).label || selectedColor;
 
-  box.innerHTML = ''
-    + '<div><strong>部位：</strong>' + selectedRegion + '　<strong>顏色：</strong>' + colorLabel + '</div>'
-    + (msg ? '<div style="margin-top:8px;"><strong>判讀：</strong>' + msg + '</div>' : '')
-    + (herb ? '<div style="margin-top:8px;"><strong>常見方劑：</strong>' + herb + '</div>' : '')
-    + (classic ? '<div style="margin-top:8px;"><strong>典籍：</strong>' + classic + '</div>' : '');
-}
+  function unique(arr) {
+    return Array.from(new Set(arr));
+  }
 
-document.getElementById('reset').onclick = () => { selectedRegion = null; selectedColor = null; renderButtons(); renderResult(); };
+  // === 初始化 ===
+  const TongueTeaching = {
+    init({ regionMount, colorMount, resultMount, resultContainer, resetBtn, onBtnStateChange }){
+      let selectedRegion = null;
+      let selectedColor = null;
 
-renderButtons();
-renderResult();
+      // 建立部位按鈕
+      const regionBtns = REGIONS.map(r => {
+        const btn = createBtn(r.label, () => {
+          selectedRegion = (selectedRegion === r.key) ? null : r.key;
+          regionBtns.forEach(b => onBtnStateChange?.(b, b === btn));
+          showResult();
+        });
+        regionMount.appendChild(btn);
+        return btn;
+      });
+
+      // 建立顏色按鈕
+      const colorBtns = COLORS.map(c => {
+        const btn = createBtn(c.label, () => {
+          selectedColor = (selectedColor === c.key) ? null : c.key;
+          colorBtns.forEach(b => onBtnStateChange?.(b, b === btn));
+          showResult();
+        });
+        colorMount.appendChild(btn);
+        return btn;
+      });
+
+      // 重設
+      resetBtn?.addEventListener("click", () => {
+        selectedRegion = null;
+        selectedColor = null;
+        regionBtns.forEach(b => onBtnStateChange?.(b, false));
+        colorBtns.forEach(b => onBtnStateChange?.(b, false));
+        resultMount.innerHTML = `<p class="muted">請先選擇部位與顏色。</p>`;
+        resultContainer?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      });
+
+      function showResult(){
+        if(!selectedRegion || !selectedColor){
+          resultMount.innerHTML = `<p class="muted">已選：${ selectedRegion ? REGIONS.find(r=>r.key===selectedRegion).label : '—' } / ${ selectedColor ? COLORS.find(c=>c.key===selectedColor).label : '—' }。請繼續選擇。</p>`;
+          return;
+        }
+        const regionExplain = (EXPLAINS[selectedRegion] && EXPLAINS[selectedRegion][selectedColor]) || [];
+        const colorExplain  = (EXPLAINS._color[selectedColor] || []);
+        const merged = unique([ ...regionExplain, ...colorExplain ]);
+        resultMount.innerHTML = renderList(merged);
+        resultContainer?.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      }
+
+      // 初始提示
+      resultMount.innerHTML = `<p class="muted">請先選擇部位與顏色。</p>`;
+    }
+  };
+
+  window.TongueTeaching = TongueTeaching;
+})();
