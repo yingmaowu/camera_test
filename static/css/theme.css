@@ -102,3 +102,13 @@ p{line-height:1.7}
 .skeleton{background:linear-gradient(90deg,#f2f4f7, #e9edf3, #f2f4f7); background-size:200% 100%; animation:shimmer 1.2s infinite}
 @keyframes shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
 .skeleton.box{height:160px; border-radius:12px}
+
+/* ==== 卡片 Hover 效果 ==== */
+.card {
+  transition: transform .12s ease, box-shadow .12s ease;
+}
+
+.card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+}
