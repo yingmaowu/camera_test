@@ -9,7 +9,6 @@
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
   <style>
     .dropdown{position:relative}
-    .dropdown-toggle{display:inline-flex; align-items:center; gap:6px}
     .dropdown-menu{
       position:absolute; right:0; top:calc(100% + 6px); min-width:220px; background:#fff; border:1px solid #e5e7eb;
       border-radius:12px; box-shadow:var(--shadow); padding:6px; display:none; z-index:100;
@@ -17,6 +16,8 @@
     .dropdown.open .dropdown-menu{display:block}
     .dropdown-item{display:block; padding:12px; border-radius:10px; text-decoration:none; color:var(--text)}
     .dropdown-item:hover{background:#f5f7fb}
+    .split-button{display:flex; gap:6px}
+    .caret-btn{width:48px; min-width:48px}
   </style>
 </head>
 <body>
@@ -27,8 +28,13 @@
     <div class="nav__right" id="navRight">
       <a class="btn" href="{{ url_for('id_input', next='index') }}">舌苔辨識</a>
       <a class="btn" href="{{ url_for('id_input', next='history') }}">歷史紀錄</a>
+
+      <!-- 教學資源：改為可點的主按鈕 + caret 下拉 -->
       <div class="dropdown" id="teachingDropdown">
-        <button class="btn btn-outline dropdown-toggle" type="button" aria-haspopup="true" aria-expanded="false">教學資源 ▾</button>
+        <div class="split-button">
+          <a class="btn btn-outline" href="{{ url_for('teaching') }}">教學資源</a>
+          <button class="btn btn-outline caret-btn" type="button" id="teachingCaret" aria-haspopup="true" aria-expanded="false">▾</button>
+        </div>
         <div class="dropdown-menu" role="menu" aria-label="教學選單">
           <a class="dropdown-item" href="{{ url_for('tongue_teaching_static') }}">舌象分類教學</a>
           <a class="dropdown-item" href="{{ url_for('quiz') }}">舌象判別練習</a>
@@ -53,19 +59,19 @@
 
   <script src="{{ url_for('static', filename='js/ui.js') }}"></script>
   <script>
-    // 教學下拉
+    // 只在點「▾」時開關下拉；點「教學資源」會直接去 /teaching
     (function(){
       const dd = document.getElementById('teachingDropdown');
-      const toggle = dd.querySelector('.dropdown-toggle');
-      toggle.addEventListener('click', (e)=>{
+      const caret = document.getElementById('teachingCaret');
+      caret.addEventListener('click', (e)=>{
         e.stopPropagation();
         const open = dd.classList.toggle('open');
-        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        caret.setAttribute('aria-expanded', open ? 'true' : 'false');
       });
       document.addEventListener('click', (e)=>{
-        if (!dd.contains(e.target)) { dd.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); }
+        if (!dd.contains(e.target)) { dd.classList.remove('open'); caret.setAttribute('aria-expanded','false'); }
       });
-      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape'){ dd.classList.remove('open'); toggle.setAttribute('aria-expanded','false'); } });
+      document.addEventListener('keydown', (e)=>{ if (e.key === 'Escape'){ dd.classList.remove('open'); caret.setAttribute('aria-expanded','false'); } });
     })();
   </script>
   {% block scripts %}{% endblock %}
