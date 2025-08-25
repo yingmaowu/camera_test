@@ -1,56 +1,166 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>舌象分類教學（互動版）</title>
-  <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", Arial, sans-serif; margin: 0; padding: 0; }
-    .container { max-width: 960px; margin: 0 auto; padding: 24px; }
-    h1 { font-size: 28px; margin-bottom: 8px; }
-    p.lead { color: #555; margin-top: 0; }
-    .panel { display: grid; grid-template-columns: 1fr; gap: 16px; }
-    @media (min-width: 900px) { .panel { grid-template-columns: 1.1fr 1fr; } }
-    .card { border: 1px solid #e5e7eb; border-radius: 16px; padding: 16px; }
-    .tongue-box { aspect-ratio: 1/1; background: #fafafa; border-radius: 16px; display:flex; align-items:center; justify-content:center; overflow:hidden; }
-    .tongue-box img { max-width: 100%; height: auto; display:block; }
-    .btns { display:flex; flex-wrap: wrap; gap: 8px; }
-    .btn { padding: 8px 12px; border: 1px solid #ccc; border-radius: 999px; cursor: pointer; background:#fff; }
-    .btn.active { background:#111; color:#fff; border-color:#111; }
-    .result { line-height:1.6; }
-    .muted { color:#6b7280; font-size:13px; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>舌象分類教學</h1>
-    <p class="lead">選擇「部位」與「顏色」，查看對應的中醫判讀與常見方劑。</p>
+{% extends "base.html" %}
+{% block title %}舌象分類教學{% endblock %}
 
-    <div class="panel">
-      <div class="card">
-        <div class="tongue-box">
-          <img id="tongue-illustration"
-             alt="舌頭示意圖"
-             src="{{ url_for('static', filename='images/tongue-diagram.jpg') }}">
-      </div>
-      <div class="card">
-        <h3>步驟 1：選擇部位</h3>
-        <div class="btns" id="region-btns"></div>
+{% block content %}
+<div class="card">
+  <h1>舌象分類教學</h1>
+  <p class="muted">以下整理常見舌象的外觀特徵、常見病機與臨床提示，作為學習參考。</p>
 
-        <h3 style="margin-top:16px;">步驟 2：選擇顏色</h3>
-        <div class="btns" id="color-btns"></div>
+  <!-- 目錄 -->
+  <div class="btn-group" style="margin-top:8px">
+    <a class="btn btn-outline" href="#coat-white">白苔</a>
+    <a class="btn btn-outline" href="#coat-yellow">黃苔</a>
+    <a class="btn btn-outline" href="#coat-thick">厚苔</a>
+    <a class="btn btn-outline" href="#coat-thin">薄苔</a>
+    <a class="btn btn-outline" href="#tongue-red">紅舌</a>
+    <a class="btn btn-outline" href="#tongue-pale">淡舌</a>
+  </div>
+</div>
 
-        <div style="margin-top:16px;">
-          <button id="reset" class="btn">重設</button>
-        </div>
-
-        <div id="result" class="result" style="margin-top:16px;"></div>
+<!-- 白苔 -->
+<section id="coat-white" class="card" style="margin-top:16px">
+  <div class="grid grid-2">
+    <div>
+      <h2>白苔</h2>
+      <p>色白，多見於表證或寒證。若薄白而潤，多為正常或外感初起；若白厚而滑，常見痰濕內盛。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table table-compact">
+          <thead><tr><th>指標</th><th>要點</th></tr></thead>
+          <tbody>
+            <tr><td>顏色</td><td>白色為主，可帶淡灰</td></tr>
+            <tr><td>質地</td><td>薄白＝正常/表證；厚白滑＝痰濕</td></tr>
+            <tr><td>常見病機</td><td>表寒、裡寒、痰濕</td></tr>
+            <tr><td>臨床提示</td><td>結合脈象、寒熱感判斷寒熱屬性</td></tr>
+          </tbody>
+        </table>
       </div>
     </div>
-
-    <p class="muted" style="margin-top:16px;">此頁為教學解說，不涉及作答與判分。如需練習題，請回到「舌象判別練習」。</p>
+    <div class="center">
+      <img src="{{ url_for('static', filename='teaching/white_coat.jpg') }}" alt="白苔示意" style="max-height:260px; border-radius:12px">
+    </div>
   </div>
+</section>
 
-  <script src="/static/js/tongue_teaching.js"></script>
-</body>
-</html>
+<!-- 黃苔 -->
+<section id="coat-yellow" class="card" style="margin-top:16px">
+  <div class="grid grid-2">
+    <div>
+      <h2>黃苔</h2>
+      <p>多主裡熱或濕熱。色澤越深，熱勢或濕熱越重；若乾黃，多為傷津；黏膩黃，多見濕熱。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table table-compact">
+          <thead><tr><th>指標</th><th>要點</th></tr></thead>
+          <tbody>
+            <tr><td>顏色</td><td>淡黃→深黃→焦黃（熱勢漸增）</td></tr>
+            <tr><td>濕潤度</td><td>乾黃＝傷津；黏膩黃＝濕熱</td></tr>
+            <tr><td>常見病機</td><td>裡熱、濕熱、實熱</td></tr>
+            <tr><td>臨床提示</td><td>合併口渴、尿少、便秘等熱象評估</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="center">
+      <img src="{{ url_for('static', filename='teaching/yellow_coat.jpg') }}" alt="黃苔示意" style="max-height:260px; border-radius:12px">
+    </div>
+  </div>
+</section>
+
+<!-- 厚苔 -->
+<section id="coat-thick" class="card" style="margin-top:16px">
+  <div class="grid grid-2">
+    <div>
+      <h2>厚苔</h2>
+      <p>苔質堆積、不易見舌質，多與痰濕、食積或實證相關。厚而膩，多見濕阻；厚而乾，多見熱盛傷津。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table table-compact">
+          <thead><tr><th>指標</th><th>要點</th></tr></thead>
+          <tbody>
+            <tr><td>可視度</td><td>舌質不易看清</td></tr>
+            <tr><td>質感</td><td>膩＝濕；乾＝熱；垢膩＝痰濕熱</td></tr>
+            <tr><td>常見病機</td><td>痰濕、食積、實熱</td></tr>
+            <tr><td>臨床提示</td><td>配合腹脹、噯氣、舌邊齒痕等判讀</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="center">
+      <img src="{{ url_for('static', filename='teaching/thick_coat.jpg') }}" alt="厚苔示意" style="max-height:260px; border-radius:12px">
+    </div>
+  </div>
+</section>
+
+<!-- 薄苔 -->
+<section id="coat-thin" class="card" style="margin-top:16px">
+  <div class="grid grid-2">
+    <div>
+      <h2>薄苔</h2>
+      <p>苔薄可見舌質，多屬正常或外感初期。若薄而少、舌質偏紅，可能為陰虛有熱。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table table-compact">
+          <thead><tr><th>指標</th><th>要點</th></tr></thead>
+          <tbody>
+            <tr><td>厚薄</td><td>薄、可見舌質紋理</td></tr>
+            <tr><td>常見病機</td><td>正常、表證初起、或陰虛（需結合其他象）</td></tr>
+            <tr><td>臨床提示</td><td>留意午後潮熱、口乾、睡眠等伴隨症</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="center">
+      <img src="{{ url_for('static', filename='teaching/thin_coat.jpg') }}" alt="薄苔示意" style="max-height:260px; border-radius:12px">
+    </div>
+  </div>
+</section>
+
+<!-- 紅舌 -->
+<section id="tongue-red" class="card" style="margin-top:16px">
+  <div class="grid grid-2">
+    <div>
+      <h2>紅舌</h2>
+      <p>舌質偏紅，多見於熱證或陰虛火旺。若紅而少苔，多為陰虛；紅而黃苔，多為實熱。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table table-compact">
+          <thead><tr><th>指標</th><th>要點</th></tr></thead>
+          <tbody>
+            <tr><td>顏色</td><td>鮮紅/深紅</td></tr>
+            <tr><td>苔象</td><td>少苔＝陰虛；黃苔＝實熱</td></tr>
+            <tr><td>常見病機</td><td>裡熱、陰虛火旺</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="center">
+      <img src="{{ url_for('static', filename='teaching/red_tongue.jpg') }}" alt="紅舌示意" style="max-height:260px; border-radius:12px">
+    </div>
+  </div>
+</section>
+
+<!-- 淡舌 -->
+<section id="tongue-pale" class="card" style="margin-top:16px">
+  <div class="grid grid-2">
+    <div>
+      <h2>淡舌</h2>
+      <p>舌質淡白，多見氣血不足或陽虛。伴齒痕、舌體胖大時，多為脾陽不足、痰濕內停。</p>
+      <div class="table-wrap" style="margin-top:8px">
+        <table class="table table-compact">
+          <thead><tr><th>指標</th><th>要點</th></tr></thead>
+          <tbody>
+            <tr><td>顏色</td><td>淡白</td></tr>
+            <tr><td>形態</td><td>胖大有齒痕 → 脾陽不足</td></tr>
+            <tr><td>常見病機</td><td>氣血不足、陽虛</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+    <div class="center">
+      <img src="{{ url_for('static', filename='teaching/pale_tongue.jpg') }}" alt="淡舌示意" style="max-height:260px; border-radius:12px">
+    </div>
+  </div>
+</section>
+
+<!-- 返回/下一步 -->
+<div class="sticky-actions center" style="margin-top:16px">
+  <a class="btn btn-outline" href="{{ url_for('teaching') }}">返回教學資源</a>
+  <a class="btn" href="{{ url_for('quiz') }}">立即進入練習</a>
+</div>
+{% endblock %}
