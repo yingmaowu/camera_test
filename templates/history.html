@@ -5,7 +5,6 @@
   <h1>📁 歷史照片紀錄</h1>
   <p class="muted">瀏覽過往拍攝影像與五區診斷。</p>
 
-  <!-- 照片格狀清單 -->
   <div id="photoGrid" class="grid grid-3" style="margin-top:20px"></div>
 </div>
 {% endblock %}
@@ -14,8 +13,11 @@
 <script>
   const photoGrid = document.getElementById("photoGrid");
   const patientId = new URLSearchParams(window.location.search).get("patient") || "";
+  if (!patientId) {
+    location.href = "{{ url_for('id_input', next='history') }}";
+  }
 
-  fetch(`/history_data?patient=${patientId}`)
+  fetch(`{{ url_for('history_data') }}?patient=${patientId}`)
     .then(res => res.json())
     .then(records => {
       if (!records.length) {
@@ -27,36 +29,37 @@
         card.className = "photo-card card";
         card.style.cursor = "pointer";
 
-        // 照片
         const img = document.createElement("img");
         img.src = record.image_url;
         img.style.borderRadius = "12px 12px 0 0";
 
-        // 時間
         const time = document.createElement("div");
         time.className = "timestamp muted";
-        time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
+        try {
+          time.textContent = new Date(record.timestamp).toLocaleString("zh-TW");
+        } catch { time.textContent = record.timestamp || ""; }
 
         card.appendChild(img);
         card.appendChild(time);
 
-        // 點擊卡片 → 彈窗
         card.onclick = () => {
-          let table = "<table style='margin:auto; border-collapse:collapse; width:100%'><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr>";
+          let table = "<div class='table-wrap'><table class='table table-compact'><thead><tr><th>區域</th><th>診斷</th><th>理論</th><th>建議</th></tr></thead><tbody>";
           if (record.five_regions) {
             Object.values(record.five_regions).forEach(r => {
-              table += `<tr><td>${r.區域}</td><td>${r.診斷}</td><td>${r.理論}</td><td>${r.建議}</td></tr>`;
+              table += `<tr><td>${r.區域||''}</td><td>${r.診斷||''}</td><td class='cell-muted'>${r.理論||''}</td><td class='cell-muted'>${r.建議||''}</td></tr>`;
             });
           } else {
-            table += "<tr><td colspan='4'>無五區診斷資料</td></tr>";
+            table += "<tr><td colspan='4' class='cell-muted'>無五區診斷資料</td></tr>";
           }
-          table += "</table>";
+          table += "</tbody></table></div>";
 
           Swal.fire({
             title: "🧠 判讀結果",
             html: `
-              <b>舌苔主色：</b> ${record.main_color || "無資料"}<br><br>
-              ${table}
+              <div style="text-align:left">
+                <p><b>舌苔主色：</b> ${record.main_color || "無資料"}</p>
+                ${table}
+              </div>
             `,
             confirmButtonText: "關閉",
             width: "80%"
@@ -65,6 +68,9 @@
 
         photoGrid.appendChild(card);
       });
+    })
+    .catch(e=>{
+      photoGrid.innerHTML = `<div class="alert error">載入失敗：${e.message}</div>`;
     });
 </script>
 {% endblock %}
