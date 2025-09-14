@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>{% block title %}中醫舌苔系統{% endblock %}</title>
+  <title>{% block title %}Tongue識課{% endblock %}</title>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
@@ -29,7 +29,7 @@
 <body>
   <header class="nav">
     <button class="btn btn-ghost" onclick="history.back()" aria-label="上一頁" style="width:auto">←</button>
-    <a class="nav__brand" href="{{ url_for('home') }}">中醫舌苔系統</a>
+    <a class="nav__brand" href="{{ url_for('home') }}">Tongue識課</a>
 
     <div class="nav__right" id="navRight">
       <a class="btn" href="{{ url_for('id_input', next='index') }}">舌苔辨識</a>
